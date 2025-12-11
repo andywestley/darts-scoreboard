@@ -193,6 +193,24 @@ $reportData = run_diagnostics();
         </div>
     </div>
 
+    <!-- Pinned Footer for Interactive Testbed -->
+    <div class="response-container">
+        <div class="response-pane">
+            <div class="title-bar">
+                <h2>Log</h2>
+                <button id="clearLogBtn">Clear</button>
+            </div>
+            <textarea id="logTextArea" readonly></textarea>
+        </div>
+        <div class="response-pane">
+            <div class="title-bar">
+                <h2>API Response</h2>
+                <button id="clearResponseBtn">Clear</button>
+            </div>
+            <textarea id="responseTextArea" readonly></textarea>
+        </div>
+    </div>
+
     <script src="js/testbed.js" defer></script>
 </body>
 </html>
