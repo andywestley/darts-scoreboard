@@ -22,8 +22,9 @@ body.testbed-page td {
 }
 
 body.testbed-page th {
-    background-color: #f7f7f7;
+    background-color: #e9ecef; /* A slightly darker, clearer header background */
     font-weight: 600;
+    color: #495057; /* Darker text for better contrast */
 }
 
 body.testbed-page .status {

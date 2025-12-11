@@ -86,8 +86,6 @@ function run_diagnostics() {
         $testResult = ['test' => $test];
         $testResult['players_before'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
         $url = $baseUrl;
-
-        // Force all API calls to be POST to avoid server-side URL rewriting issues with GET params.
         $postData = array_merge($test['data'], [
             'action' => $test['action'],
             'csrf_token' => $csrfToken
@@ -98,11 +96,11 @@ function run_diagnostics() {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_COOKIE, $sessionCookie);
-        if ($postData) {
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-            $test['method'] = 'POST'; // Reflect the actual method used
-        }
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        $test['method'] = 'POST'; // Reflect the actual method used
+        $testResult['test'] = $test; // Re-assign the modified test array to the result
+
         $testResult['response_body'] = curl_exec($ch);
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -130,12 +128,12 @@ $reportData = run_diagnostics();
         <h1>🎯 Darts Scoreboard - Debugging Tools</h1>
 
         <div class="tabs">
-            <button class="tab-link active" data-tab="interactiveTab">Interactive Testbed</button>
-            <button class="tab-link" data-tab="diagnosticsTab">Diagnostics Report</button>
+            <button class="tab-link" data-tab="interactiveTab">Interactive Testbed</button>
+            <button class="tab-link active" data-tab="diagnosticsTab">Diagnostics Report</button>
         </div>
 
         <!-- Interactive Testbed Content -->
-        <div id="interactiveTab" class="tab-content active">
+        <div id="interactiveTab" class="tab-content">
             <div class="scrollable-content">
                 <p>Use this page to test API actions independently. The raw server response will appear in the pinned window below.</p>
                 <fieldset>
@@ -179,7 +177,7 @@ $reportData = run_diagnostics();
         </div>
 
         <!-- Diagnostics Report Content -->
-        <div id="diagnosticsTab" class="tab-content">
+        <div id="diagnosticsTab" class="tab-content active">
             <div id="report-container">
                 <button id="copyBtn">Copy Full Report to Clipboard</button>
                 <h2>0. PHP Environment</h2>
