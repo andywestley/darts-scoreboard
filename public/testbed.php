@@ -26,6 +26,14 @@ function run_diagnostics() {
     $report['permissions'] = $permResults;
 
     // --- Test 2: API Endpoint Execution ---
+    // We need the CSRF token for POST requests.
+    // We must start the session to get it, then close it before making cURL requests.
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $csrfToken = $_SESSION['csrf_token'] ?? null;
+
+    // Close the session to prevent cURL requests from hanging.
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
@@ -53,7 +61,10 @@ function run_diagnostics() {
         if ($test['method'] === 'GET') {
             $url .= '?action=' . $test['action'];
         } else {
-            $postData = array_merge($test['data'], ['action' => $test['action']]);
+            $postData = array_merge($test['data'], [
+                'action' => $test['action'],
+                'csrf_token' => $csrfToken
+            ]);
         }
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);

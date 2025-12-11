@@ -25,9 +25,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
 
 // If the request is for an API action, run the API and exit.
 if ($action) {
-    // The App class handles all API logic.
-    $app = new App();
-    $app->run();
+    ob_start(); // Start output buffering
+    try {
+        $app = new App();
+        $app->run();
+    } catch (Exception $e) {
+        // This will be caught by the global exception handler in bootstrap.php
+        // but we have it here for clarity. The handler will format it as JSON.
+        throw $e;
+    }
+    $output = ob_get_clean(); // Get the buffer content and clean the buffer
+
+    if (empty($output) && json_last_error() === JSON_ERROR_NONE) {
+        $output = json_encode(['success' => false, 'error' => "API action '{$action}' did not return any output."]);
+    }
+    echo $output;
     exit; // Stop execution after handling the API request.
 }
 
