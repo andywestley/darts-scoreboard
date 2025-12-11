@@ -32,17 +32,17 @@ class App
 
         // Simple Router
         $this->routes = [
-            'add_player'        => [$setupController, 'addPlayer'],
-            'get_setup_players' => [$setupController, 'getSetupPlayers'],
-            'remove_player'     => [$setupController, 'removePlayer'],
-            'start_game'        => [$setupController, 'startGame'],
-            'reset'             => [$setupController, 'reset'], // Handle session reset
-            'submit_score'      => [$gameController, 'submitScore'],
-            'start_new_leg'     => [$gameController, 'startNewLeg'],
-            'undo'              => [$gameController, 'undo'],
-            'get_players'       => [$statsController, 'getPlayers'],
-            'get_matches'       => [$statsController, 'getMatches'],
-            'get_h2h_stats'     => [$statsController, 'getH2HStats'],
+            'player:add'        => [$setupController, 'addPlayer'],
+            'player:remove'     => [$setupController, 'removePlayer'],
+            'player:get_all'    => [$statsController, 'getPlayers'], // For stats screen
+            'game:start'        => [$setupController, 'startGame'],
+            'game:score'        => [$gameController, 'submitScore'],
+            'game:state'        => [$gameController, 'getGameState'], // Add this route
+            'game:undo'         => [$gameController, 'undo'],
+            'game:nextLeg'      => [$gameController, 'startNewLeg'],
+            'session:reset'     => [$setupController, 'reset'],
+            'stats:matches'     => [$statsController, 'getMatches'],
+            'stats:h2h'         => [$statsController, 'getH2HStats'],
         ];
     }
 
