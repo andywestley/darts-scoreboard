@@ -177,14 +177,8 @@ session_write_close();
                 try {
                     const response = await fetch(url, options);
                     const rawText = await response.text();
-
-                    // Try to format if it's JSON, otherwise show raw text
-                    try {
-                        const json = JSON.parse(rawText);
-                        responseTextArea.value = JSON.stringify(json, null, 2);
-                    } catch (jsonError) {
-                        responseTextArea.value = rawText;
-                    }
+                    
+                    responseTextArea.value = rawText;
 
                     if (action === 'reset') {
                         responseTextArea.value += "\n\nNOTE: Session destroyed. Subsequent requests will be in a new session.";
