@@ -7,8 +7,12 @@ let currentThrow = { // Holds state for the current dart being entered
 };
 
 // --- API & Player Data ---
-const API_BASE_URL = 'http://127.0.0.1:5001'; // URL of your Python server
-const API_KEY = "your-super-secret-key"; // IMPORTANT: Must match the key in server.py
+// Use a relative URL for the API. This works seamlessly whether you're running
+// locally or on a deployed server, as it calls the same host that served the page.
+const API_BASE_URL = ''; 
+// The API key should match the one on the server. For development, this can be the default.
+// For production, the server should use an environment variable.
+const API_KEY = "your-super-secret-key-dev";
 let allRegisteredPlayers = {}; // Stores players loaded from the server, indexed by name
 
 // --- DOM Element Cache ---

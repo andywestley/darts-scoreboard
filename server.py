@@ -7,12 +7,14 @@ import os
 app = Flask(__name__)
 CORS(app)  # Allow Cross-Origin requests for local development
 
-# IMPORTANT: This is your secret key. The client must send this to save data.
-# In a real production app, this should be set as an environment variable.
-SECRET_API_KEY = "your-super-secret-key"
+# Load the secret key from an environment variable for better security.
+# Fallback to a default key for easy local development.
+SECRET_API_KEY = os.environ.get("DARTBOARD_API_KEY", "your-super-secret-key-dev")
 
-PLAYERS_DATA_FILE = 'players.json'
-MATCHES_DATA_FILE = 'matches.json'
+# Define a dedicated directory for data files.
+DATA_DIR = 'data'
+PLAYERS_DATA_FILE = os.path.join(DATA_DIR, 'players.json')
+MATCHES_DATA_FILE = os.path.join(DATA_DIR, 'matches.json')
 
 # --- DATA HELPER FUNCTIONS ---
 
@@ -20,6 +22,9 @@ def get_player_data():
     """Loads player data from the JSON file."""
     if not os.path.exists(DATA_FILE):
         return {}  # Return empty dict if file doesn't exist
+def ensure_data_dir():
+    """Ensures the data directory exists."""
+    os.makedirs(DATA_DIR, exist_ok=True)
 def get_data(file_path):
     """Generic function to load data from a JSON file."""
     if not os.path.exists(file_path):
@@ -153,6 +158,7 @@ if __name__ == '__main__':
     2. Run this file: python server.py
     The server will be available at http://127.0.0.1:5001
     """
+    ensure_data_dir()
     print("--- Darts Scoreboard Server ---")
     print(f"Secret Key: '{SECRET_API_KEY}'")
     print("Starting server on http://127.0.0.1:5001")
