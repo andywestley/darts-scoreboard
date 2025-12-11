@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Darts Scorer + Stats</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="setupScreen" class="screen active">
+        <div class="setup-container">
+            <h1>🎯 Pro Darts Scorer</h1>
+            
+            <div class="input-group">
+                <label>Game Type</label>
+                <select id="gameType">
+                    <option value="301">301</option>
+                    <option value="501" selected>501</option>
+                    <option value="701">701</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Add Players</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="newPlayerName" placeholder="Enter name...">
+                    <button class="btn btn-secondary" onclick="addPlayer()" style="width: auto; margin: 0;">+</button>
+                </div>
+            </div>
+
+            <div class="player-list" id="playerList"></div>
+
+            <button class="btn" onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+
+    <div id="gameScreen" class="screen">
+        <header>
+            <a href="#" onclick="location.reload()" class="reset-link">← New Game</a>
+            <span style="color: #666">Leg 1</span>
+        </header>
+
+        <div class="active-player-display">
+            <div class="player-name-large" id="activeName">Player 1</div>
+            <div class="current-score-large" id="activeScore">501</div>
+            <div class="stats-badge" id="activeAvg">Avg: 0.00</div>
+            <div class="checkout-suggestion" id="checkoutHint"></div>
+        </div>
+
+        <div class="leaderboard" id="leaderboard"></div>
+
+        <div class="controls">
+            <div class="input-display" id="inputDisplay">0</div>
+            <div class="keypad">
+                <button class="key" onclick="pressKey(1)">1</button>
+                <button class="key" onclick="pressKey(2)">2</button>
+                <button class="key" onclick="pressKey(3)">3</button>
+                <button class="key" onclick="pressKey(4)">4</button>
+                <button class="key" onclick="pressKey(5)">5</button>
+                <button class="key" onclick="pressKey(6)">6</button>
+                <button class="key" onclick="pressKey(7)">7</button>
+                <button class="key" onclick="pressKey(8)">8</button>
+                <button class="key" onclick="pressKey(9)">9</button>
+                <button class="key key-del" onclick="clearInput()">CLR</button>
+                <button class="key" onclick="pressKey(0)">0</button>
+                <button class="key" onclick="deleteChar()">⌫</button>
+                <button class="key key-enter" onclick="submitScore()">ENTER SCORE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="winModal" class="modal">
+        <h2 id="winnerText">WINNER!</h2>
+        <div class="confetti">Game Shot!</div>
+        <div class="winner-stats" id="winnerStats"></div>
+        <button class="btn" onclick="location.reload()" style="max-width: 200px;">Play Again</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+:root {
+    --bg-color: #1a1a1a;
+    --card-bg: #2d2d2d;
+    --text-color: #ffffff;
+    --accent-color: #00d2be; /* PDC Green */
+    --danger-color: #ff4b4b;
+    --stat-color: #ffcc00;   /* Gold for stats */
+    --secondary-text: #b0b0b0;
+}
+
+* { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+body { margin: 0; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; height: 100vh; }
+
+/* --- Screens --- */
+.screen { display: none; flex-direction: column; height: 100%; padding: 1rem; }
+.screen.active { display: flex; }
+
+/* --- Setup Screen --- */
+.setup-container { max-width: 500px; margin: auto; width: 100%; }
+h1 { text-align: center; color: var(--accent-color); margin-bottom: 2rem; }
+
+.input-group { margin-bottom: 1.5rem; }
+label { display: block; margin-bottom: 0.5rem; color: var(--secondary-text); }
+
+select, input[type="text"] {
+    width: 100%; padding: 0.8rem; border-radius: 8px; border: none;
+    background: var(--card-bg); color: white; font-size: 1.1rem;
+}
+
+.player-list { margin-bottom: 1rem; max-height: 200px; overflow-y: auto; }
+.player-tag {
+    background: var(--card-bg); padding: 0.5rem 1rem; margin: 0.2rem 0;
+    display: flex; justify-content: space-between; align-items: center; border-radius: 5px;
+}
+.remove-btn { color: var(--danger-color); cursor: pointer; font-weight: bold; }
+
+.btn {
+    background: var(--accent-color); color: #000; border: none; padding: 1rem;
+    width: 100%; border-radius: 8px; font-weight: bold; font-size: 1.1rem;
+    cursor: pointer; margin-top: 1rem; text-transform: uppercase;
+}
+.btn-secondary { background: #444; color: white; }
+
+/* --- Scoreboard Screen --- */
+header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #333; }
+.reset-link { color: var(--secondary-text); text-decoration: none; font-size: 0.9rem; }
+
+/* Active Player Display */
+.active-player-display {
+    flex-grow: 1; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; text-align: center;
+    padding: 1rem 0;
+}
+.player-name-large { font-size: 1.5rem; color: var(--secondary-text); }
+.current-score-large { font-size: 6rem; font-weight: bold; line-height: 1; color: white; margin: 0.5rem 0; }
+
+.stats-badge {
+    font-size: 1rem; background: #333; padding: 0.3rem 0.8rem; 
+    border-radius: 20px; color: var(--stat-color); font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.checkout-suggestion { 
+    color: var(--accent-color); height: 2rem; font-size: 1.2rem; font-weight: 500;
+}
+
+/* Leaderboard / Table */
+.leaderboard {
+    display: flex; gap: 10px; overflow-x: auto; padding: 1rem 0;
+    border-top: 1px solid #333; border-bottom: 1px solid #333;
+}
+.player-card {
+    min-width: 100px; background: var(--card-bg); padding: 0.8rem;
+    border-radius: 8px; text-align: center; opacity: 0.6;
+    border: 2px solid transparent; display: flex; flex-direction: column;
+}
+.player-card.active { opacity: 1; border-color: var(--accent-color); transform: scale(1.05); }
+.p-score { font-size: 1.5rem; font-weight: bold; display: block; }
+.p-name { font-size: 0.9rem; color: var(--secondary-text); margin-bottom: 0.2rem; }
+.p-avg { font-size: 0.75rem; color: var(--stat-color); }
+
+/* Keypad */
+.controls { margin-top: auto; }
+.input-display {
+    background: #000; color: var(--accent-color); text-align: center;
+    font-size: 2rem; padding: 0.5rem; border-radius: 8px; margin-bottom: 1rem;
+    min-height: 3.5rem; display: flex; align-items: center; justify-content: center;
+}
+
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.key {
+    background: var(--card-bg); color: white; padding: 1rem; border-radius: 6px;
+    font-size: 1.5rem; border: none; cursor: pointer;
+}
+.key:active { background: #555; }
+.key-enter { background: var(--accent-color); color: black; grid-column: span 3; }
+.key-del { background: var(--danger-color); }
+
+/* Modal */
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center;
+    flex-direction: column; z-index: 100;
+}
+.modal h2 { font-size: 3rem; color: var(--accent-color); }
+.confetti { font-size: 1.2rem; color: #fff; margin-bottom: 2rem; }
+.winner-stats { color: var(--stat-color); font-size: 1.5rem; margin-bottom: 2rem; }
+
+@media (min-width: 768px) {
+    .keypad { grid-template-columns: repeat(3, 1fr); max-width: 400px; margin: 0 auto; }
+    .input-display { max-width: 400px; margin: 0 auto 1rem auto; }
+    .leaderboard { justify-content: center; }
+}
