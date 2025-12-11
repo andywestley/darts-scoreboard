@@ -44,9 +44,9 @@ class StatsController
 
             if (in_array($player1Name, $playerNamesInMatch) && in_array($player2Name, $playerNamesInMatch)) {
                 $h2hRecord['total_matches']++;
-                if ($match->winner === $player1Name) {
+                if ($match['winner'] === $player1Name) {
                     $h2hRecord['player1_wins']++;
-                } elseif ($match->winner === $player2Name) {
+                } elseif ($match['winner'] === $player2Name) {
                     $h2hRecord['player2_wins']++;
                 }
             }
