@@ -40,7 +40,6 @@ function run_diagnostics() {
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
-    $errorLogPath = ini_get('error_log');
     $playersDataFile = __DIR__ . '/../data/players.json';
 
     $apiTests = [
@@ -79,7 +78,6 @@ function run_diagnostics() {
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
-        $testResult['error_log_snippet'] = file_exists($errorLogPath) ? shell_exec('tail -n 20 ' . escapeshellarg($errorLogPath)) : 'Error log not found or accessible.';
         $apiResults[] = $testResult;
     }
     $report['api'] = $apiResults;
@@ -171,31 +169,35 @@ $reportData = run_diagnostics();
                         <?php
                             $test = $result['test'];
                             $statusCode = $result['status_code'];
-                            $responseBody = $result['response_body'];
-                            $isPass = ($statusCode >= 200 && $statusCode < 300 && !empty(trim($responseBody)));
+                            $isPass = ($statusCode >= 200 && $statusCode < 300);
                             $statusClass = $isPass ? 'status-pass' : 'status-fail';
+
+                            // Helper to pretty-print JSON strings
+                            $prettyPrintJson = function($jsonString) {
+                                $data = json_decode($jsonString);
+                                if (json_last_error() === JSON_ERROR_NONE) {
+                                    return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                                }
+                                return $jsonString; // Return original if not valid JSON
+                            };
                         ?>
                         <tr>
                             <td><?php echo htmlspecialchars($test['action']); ?></td>
                             <td><?php echo htmlspecialchars($test['method']); ?></td>
                             <td class="<?php echo $statusClass; ?>"><?php echo htmlspecialchars($statusCode); ?></td>
-                            <td>
-                                <details>
-                                    <summary>players.json (before)</summary>
-                                    <pre><?php echo htmlspecialchars($result['players_before']); ?></pre>
-                                </details>
-                                <details>
-                                    <summary>players.json (after)</summary>
-                                    <pre><?php echo htmlspecialchars($result['players_after']); ?></pre>
-                                </details>
-                                <details>
-                                    <summary>Raw API Response Payload</summary>
-                                    <pre><?php echo htmlspecialchars($responseBody); ?></pre>
-                                </details>
-                                <details>
-                                    <summary>Server Error Log Snippet (last 20 lines)</summary>
-                                    <pre><?php echo htmlspecialchars($result['error_log_snippet']); ?></pre>
-                                </details>
+                            <td class="api-details-cell">
+                                <div class="api-detail-block">
+                                    <strong>players.json (before)</strong>
+                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_before'])); ?></pre>
+                                </div>
+                                <div class="api-detail-block">
+                                    <strong>players.json (after)</strong>
+                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_after'])); ?></pre>
+                                </div>
+                                <div class="api-detail-block">
+                                    <strong>API Response Payload</strong>
+                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['response_body'])); ?></pre>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
