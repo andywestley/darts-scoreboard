@@ -1,10 +1,4 @@
 <?php
-// Temporarily display all PHP errors to diagnose the "blank screen" issue.
-// IMPORTANT: Remove these lines once the problem is solved.
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // --- VIEW RENDERING LOGIC ---
 
 // Determine which screen to display based on the session state.
