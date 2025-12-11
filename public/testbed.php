@@ -1,9 +1,3 @@
-<?php
-require_once __DIR__ . '/../bootstrap.php';
-
-// Close the session to prevent deadlocks when cURL calls back to the same server.
-session_write_close();
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -192,23 +186,3 @@ session_write_close();
     </script>
 </body>
 </html>
-```
-
-### How to Use the Testbed
-
-1.  Save the new file as `testbed.php` in the `c:\Users\Andrew\Documents\github\darts-scoreboard\public\` directory.
-2.  Upload it to your server.
-3.  Navigate to `https://dartboard.andrewwestley.co.uk/testbed.php` in your browser.
-
-You will see a series of buttons and input fields. When you click a "Test" button, the page will perform the following actions:
-
-*   It makes a server-side cURL request to your `api.php` endpoint, simulating what your JavaScript would do.
-*   It captures the **exact raw output** from the server.
-*   It displays that raw output in the "API Response" textarea at the bottom of the page.
-
-If you test the "Add Player" action and still see the `SyntaxError`, the textarea will now show you the exact PHP notice or error that is being generated, which will allow us to pinpoint and fix it definitively.
-
-<!--
-[PROMPT_SUGGESTION]The testbed shows a "Cannot redeclare class" error. Can you help me fix it?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]The testbed helped me fix the API. Can you now add the styles for the game screen?[/PROMPT_SUGGESTION]
--->
