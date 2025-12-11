@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Darts Scorer + Stats</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,6 +23,22 @@
             </div>
 
             <div class="input-group">
+                <label>Match Format (First to)</label>
+                <select id="matchLegs">
+                    <option value="1">1 Leg</option>
+                    <option value="3" selected>3 Legs</option>
+                    <option value="5">5 Legs</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="checkoutAssistantToggle" checked>
+                    <label for="checkoutAssistantToggle">Show Checkout Assistant</label>
+                </div>
+            </div>
+
+            <div class="input-group">
                 <label>Add Players</label>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="newPlayerName" placeholder="Enter name...">
@@ -36,6 +53,7 @@
 
             <button class="btn" onclick="startGame()">Start Game</button>
             <button class="btn btn-secondary" onclick="showScreen('statsScreen')">View Player Stats</button>
+            <button class="btn btn-secondary" onclick="showScreen('matchHistoryScreen')">Match History</button>
 
             <div id="serverStatus" class="server-status-indicator">
                 <span class="status-dot"></span>
@@ -56,6 +74,8 @@
             <div class="stats-badge" id="activeAvg">Avg: 0.00</div>
             <div class="checkout-suggestion" id="checkoutHint"></div>
         </div>
+
+        <div id="burnDownChartContainer"></div>
 
         <div class="leaderboard" id="leaderboard"></div>
 
@@ -102,7 +122,21 @@
                 <!-- Selected player's stats will be shown here -->
                 <h2>Select a Player</h2>
                 <p>Click on a player from the list to see their detailed stats.</p>
+                <div id="avgChartContainer"></div>
+                <div id="h2hStatsContainer"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="matchHistoryScreen" class="screen">
+        <header>
+            <a href="#" onclick="showScreen('setupScreen')" class="reset-link">← Back to Setup</a>
+            <span style="color: var(--accent-color); font-weight: bold;">Match History</span>
+        </header>
+
+        <div class="match-history-container" id="matchHistoryContainer">
+            <!-- Match history will be loaded here by JS -->
+            <p>Loading match history...</p>
         </div>
     </div>
 
@@ -111,6 +145,26 @@
         <div class="confetti">Game Shot!</div>
         <div class="winner-stats" id="winnerStats"></div>
         <button class="btn" onclick="location.reload()" style="max-width: 200px;">Play Again</button>
+    </div>
+
+    <div id="matchSummaryScreen" class="modal">
+        <div class="match-summary-container">
+            <h2>Match Over!</h2>
+            <h3 id="matchWinnerName"></h3>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Legs Won</th>
+                        <th>Match Avg</th>
+                    </tr>
+                </thead>
+                <tbody id="matchSummaryBody">
+                    <!-- Summary rows will be populated by JS -->
+                </tbody>
+            </table>
+            <button class="btn" onclick="location.reload()" style="max-width: 250px;">Start New Match</button>
+        </div>
     </div>
 
     <script src="app.js"></script>

@@ -11,7 +11,8 @@ CORS(app)  # Allow Cross-Origin requests for local development
 # In a real production app, this should be set as an environment variable.
 SECRET_API_KEY = "your-super-secret-key"
 
-DATA_FILE = 'players.json'
+PLAYERS_DATA_FILE = 'players.json'
+MATCHES_DATA_FILE = 'matches.json'
 
 # --- DATA HELPER FUNCTIONS ---
 
@@ -19,16 +20,27 @@ def get_player_data():
     """Loads player data from the JSON file."""
     if not os.path.exists(DATA_FILE):
         return {}  # Return empty dict if file doesn't exist
+def get_data(file_path):
+    """Generic function to load data from a JSON file."""
+    if not os.path.exists(file_path):
+        return [] if 'matches' in file_path else {}
     try:
-        with open(DATA_FILE, 'r') as f:
+        with open(file_path, 'r') as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
-        return {} # Return empty dict on error
+        return [] if 'matches' in file_path else {}
 
-def save_player_data(data):
+def save_player_data(data): # This function remains for player stats
     """Saves player data to the JSON file."""
-    with open(DATA_FILE, 'w') as f:
+    with open(PLAYERS_DATA_FILE, 'w') as f:
         json.dump(data, f, indent=4)
+
+def append_match_data(match_record):
+    """Appends a new match record to the matches JSON file."""
+    all_matches = get_data(MATCHES_DATA_FILE)
+    all_matches.append(match_record)
+    with open(MATCHES_DATA_FILE, 'w') as f:
+        json.dump(all_matches, f, indent=4)
 
 # --- API ENDPOINTS ---
 
@@ -44,10 +56,22 @@ def get_players():
     Endpoint to get all registered players.
     This is a public endpoint and requires no authentication.
     """
-    players_data = get_player_data()
+    players_data = get_data(PLAYERS_DATA_FILE)
     # Convert the dictionary of players into a list for the client
     players_list = list(players_data.values())
     return jsonify(players_list)
+
+@app.route('/api/matches', methods=['GET'])
+def get_matches():
+    """
+    Endpoint to get all completed match records.
+    This is a public endpoint.
+    """
+    matches_data = get_data(MATCHES_DATA_FILE)
+    # Sort matches by timestamp, newest first, to show recent matches at the top
+    matches_data.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    return jsonify(matches_data)
+
 
 @app.route('/api/players/update', methods=['POST'])
 def update_players():
@@ -69,7 +93,7 @@ def update_players():
     if not isinstance(updates, list):
         abort(400, description="Request body must be a list of player objects.")
 
-    all_players = get_player_data()
+    all_players = get_data(PLAYERS_DATA_FILE)
 
     for player_update in updates:
         player_name = player_update.get('name')
@@ -96,6 +120,29 @@ def update_players():
     
     return jsonify({"status": "success", "message": f"{len(updates)} players updated."})
 
+@app.route('/api/matches', methods=['POST'])
+def save_match():
+    """
+    Endpoint to save a completed match record.
+    This is a protected endpoint.
+    """
+    # --- Authentication Check ---
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        abort(401, description="Authorization header is missing or invalid.")
+    
+    token = auth_header.split(' ')[1]
+    if token != SECRET_API_KEY:
+        abort(403, description="Invalid API key.")
+
+    # --- Save Logic ---
+    match_record = request.json
+    if not match_record or 'winner' not in match_record:
+        abort(400, description="Invalid match record data.")
+
+    append_match_data(match_record)
+    
+    return jsonify({"status": "success", "message": "Match record saved."})
 
 # --- MAIN EXECUTION ---
 

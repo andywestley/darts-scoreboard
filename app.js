@@ -1,22 +1,20 @@
 // --- Game State ---
-let players = [];
-let currentPlayerIndex = 0;
-let startScore = 501;
-let turnScores = []; // Holds scores for the 3 darts in a turn
+let match = {}; // The single source of truth for the entire match state.
+
 let currentThrow = { // Holds state for the current dart being entered
     base: null,
     multiplier: 1, // 1 for single, 2 for double, 3 for treble
 };
-let gameHistory = []; // To store state for the undo feature
 
 // --- API & Player Data ---
 const API_BASE_URL = 'http://127.0.0.1:5001'; // URL of your Python server
 const API_KEY = "your-super-secret-key"; // IMPORTANT: Must match the key in server.py
 let allRegisteredPlayers = {}; // Stores players loaded from the server, indexed by name
-let leg = 1;
 
 // --- DOM Element Cache ---
 const dom = {
+    // A new player list is needed for the setup screen, separate from the match players
+    setupPlayers: [],
     setupScreen: null,
     gameScreen: null,
     statsScreen: null,
@@ -31,6 +29,8 @@ const dom = {
     inputDisplay: null,
     legDisplay: null,
     winModal: null,
+    matchSummaryScreen: null,
+    matchHistoryScreen: null,
 };
 
 
@@ -38,11 +38,10 @@ const dom = {
 function addPlayer() {
     const input = document.getElementById('newPlayerName');
     const name = input.value.trim();
-    if (name) {
+    if (name && !dom.setupPlayers.find(p => p.name === name)) {
         // Added stats tracking: totalPointsScored and dartsThrown
-        players.push({ 
+        dom.setupPlayers.push({ 
             name: name, 
-            score: 0, 
             id: Date.now(),
             totalPointsScored: 0,
             dartsThrown: 0,
@@ -60,13 +59,13 @@ document.getElementById('newPlayerName').addEventListener('keypress', function (
 });
 
 function removePlayer(id) {
-    players = players.filter(p => p.id !== id);
+    dom.setupPlayers = dom.setupPlayers.filter(p => p.id !== id);
     renderPlayerList();
 }
 
 function renderPlayerList() {
     const list = document.getElementById('playerList');
-    list.innerHTML = players.map(p => `
+    list.innerHTML = dom.setupPlayers.map(p => `
         <div class="player-tag">
             <span>${p.name}</span>
             <span class="remove-btn" onclick="removePlayer(${p.id})">×</span>
@@ -78,41 +77,59 @@ function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
 
-    if (screenId === 'statsScreen') renderStatsPlayerList();
+    if (screenId === 'statsScreen') {
+        renderStatsPlayerList();
+    } else if (screenId === 'matchHistoryScreen') {
+        loadMatchHistory();
+    }
 }
 
 function startGame() {
-    if (players.length === 0) {
+    if (dom.setupPlayers.length === 0) {
         alert("Please add at least one player.");
         return;
     }
-    startScore = parseInt(document.getElementById('gameType').value);
-    
-    // Initialize scores
-    players.forEach(p => {
-        p.score = startScore;
-        p.totalPointsScored = 0;
-        p.dartsThrown = 0;
-        p.legTurnScores = [];
+
+    // Initialize the main match object
+    match = {
+        players: JSON.parse(JSON.stringify(dom.setupPlayers)), // Deep copy to prevent side effects
+        settings: {
+            startScore: parseInt(document.getElementById('gameType').value),
+            legsToWin: parseInt(document.getElementById('matchLegs').value),
+            useCheckoutAssistant: document.getElementById('checkoutAssistantToggle').checked,
+        },
+        currentLeg: {
+            number: 1,
+            startingPlayerIndex: 0,
+            currentPlayerIndex: 0,
+            turnScores: [],
+            history: [],
+        },
+        isOver: false,
+    };
+
+    // Reset player scores and leg-specific stats for the first leg
+    match.players.forEach(p => {
+        p.score = match.settings.startScore;
+        p.legsWon = 0; // Ensure legs won is reset for a new match
+        // Add match-long stat trackers
+        p.matchDartsThrown = 0;
+        p.matchTotalPointsScored = 0;
     });
-    
-    leg = 1;
+
+    startNewLeg(true); // Start the first leg
     showScreen('gameScreen');
-    
-    turnScores = [];
-    gameHistory = [];
     initGameUI();
-    updateUI();
 }
 
 function initGameUI() {
     generateNumberButtons(); // Generate number pad
 
     // Create player cards in the leaderboard
-    dom.leaderboard.innerHTML = players.map(p => `
+    dom.leaderboard.innerHTML = match.players.map(p => `
         <div class="player-card">
             <span class="p-name">${p.name}</span>
-            <span class="p-score">${startScore}</span>
+            <span class="p-score">${match.settings.startScore}</span>
             <span class="p-avg">Avg: 0.00</span>
         </div>
     `).join('');
@@ -167,9 +184,10 @@ function updateInputDisplay() {
 
 function submitScore(dartScore) {
     // Save current state for undo
-    gameHistory.push(JSON.parse(JSON.stringify({ players, currentPlayerIndex, turnScores })));
+    const leg = match.currentLeg;
+    leg.history.push(JSON.parse(JSON.stringify({ players: match.players, leg })));
 
-    const player = players[currentPlayerIndex];
+    const player = match.players[leg.currentPlayerIndex];
 
     // Basic validation
     if (dartScore > 180) { // Should not happen with new UI, but good practice
@@ -177,9 +195,13 @@ function submitScore(dartScore) {
         return;
     }
 
-    turnScores.push(dartScore);
+    leg.turnScores.push(dartScore);
     player.dartsThrown += 1;
     player.totalPointsScored += dartScore;
+    // Also update match-long stats
+    player.matchDartsThrown += 1;
+    player.matchTotalPointsScored += dartScore;
+
     player.score -= dartScore;
 
     // --- Check for Win or Bust ---
@@ -196,11 +218,11 @@ function submitScore(dartScore) {
             // BUST! Invalid checkout (not a double).
             alert("BUST! You must finish on a double.");
             // Revert score and stats for the turn
-            const turnTotal = turnScores.reduce((a, b) => a + b, 0);
+            const turnTotal = leg.turnScores.reduce((a, b) => a + b, 0);
             player.score += turnTotal;
             player.totalPointsScored -= turnTotal;
-            player.dartsThrown += (3 - turnScores.length); // Penalize with remaining darts
-            player.legTurnScores.push(turnScores.reduce((a, b) => a + b, 0)); // Record turn score for stats
+            player.dartsThrown += (3 - leg.turnScores.length); // Penalize with remaining darts
+            player.legTurnScores.push(leg.turnScores.reduce((a, b) => a + b, 0)); // Record turn score for stats
             nextTurn();
             return;
         }
@@ -208,14 +230,14 @@ function submitScore(dartScore) {
         // BUST!
         alert("BUST!");
         // Revert score and stats for the turn
-        const turnTotal = turnScores.reduce((a, b) => a + b, 0);
+        const turnTotal = leg.turnScores.reduce((a, b) => a + b, 0);
         player.score += turnTotal;
         player.totalPointsScored -= turnTotal;
         // Darts thrown still count
-        player.legTurnScores.push(turnScores.reduce((a, b) => a + b, 0)); // Record turn score for stats
+        player.legTurnScores.push(leg.turnScores.reduce((a, b) => a + b, 0)); // Record turn score for stats
         
         // Fill remaining darts thrown for the turn for stat purposes
-        player.dartsThrown += (3 - turnScores.length);
+        player.dartsThrown += (3 - leg.turnScores.length);
 
         nextTurn();
         return;
@@ -226,18 +248,17 @@ function submitScore(dartScore) {
     updateUI();
 
     // If 3 darts are thrown, move to next player
-    if (turnScores.length === 3) {
+    if (leg.turnScores.length === 3) {
         nextTurn();
     }
 }
 
 function undoLastDart() {
-    if (gameHistory.length === 0) return;
+    if (match.currentLeg.history.length === 0) return;
 
-    const lastState = gameHistory.pop();
-    players = lastState.players;
-    currentPlayerIndex = lastState.currentPlayerIndex;
-    turnScores = lastState.turnScores;
+    const lastState = match.currentLeg.history.pop();
+    match.players = lastState.players;
+    match.currentLeg = lastState.leg;
 
     // Reset current throw state
     currentThrow = { base: null, multiplier: 1 };
@@ -249,12 +270,12 @@ function undoLastDart() {
 function nextTurn() {
     // Use a timeout to allow the player to see the result of their last dart
     // Record the turn score for the current player before switching
-    const player = players[currentPlayerIndex];
-    player.legTurnScores.push(turnScores.reduce((a, b) => a + b, 0));
+    const player = match.players[match.currentLeg.currentPlayerIndex];
+    player.legTurnScores.push(match.currentLeg.turnScores.reduce((a, b) => a + b, 0));
 
     setTimeout(() => {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        turnScores = [];
+        match.currentLeg.currentPlayerIndex = (match.currentLeg.currentPlayerIndex + 1) % match.players.length;
+        match.currentLeg.turnScores = [];
         currentThrow = { base: null, multiplier: 1 };
         updateUI();
     }, 800);
@@ -265,24 +286,37 @@ function getAverage(player) {
     return ((player.totalPointsScored / player.dartsThrown) * 3).toFixed(2);
 }
 
+function getMatchAverage(player) {
+    if (player.matchDartsThrown === 0) return "0.00";
+    return ((player.matchTotalPointsScored / player.matchDartsThrown) * 3).toFixed(2);
+}
+
 function updateUI() {
-    if (players.length === 0 || !dom.gameScreen.classList.contains('active')) return;
-    const player = players[currentPlayerIndex];
+    if (!match.players || match.players.length === 0 || !dom.gameScreen.classList.contains('active')) return;
+    const leg = match.currentLeg;
+    const player = match.players[leg.currentPlayerIndex];
     
     // Main Display
     dom.activeName.innerText = player.name;
     dom.activeScore.innerText = player.score;
     dom.activeAvg.innerText = `Avg: ${getAverage(player)}`;
-    dom.legDisplay.innerText = `Leg ${leg}`;
+    
+    // Update header to show match score
+    const matchScore = match.players.map(p => `${p.name.split(' ')[0]} (${p.legsWon})`).join(' - ');
+    dom.legDisplay.innerText = `Leg ${leg.number} | ${matchScore}`;
     
     // Checkout Hint
-    const checkout = getCheckoutGuide(player.score);
-    dom.checkoutHint.innerText = checkout ? `Checkout: ${checkout}` : "";
+    if (match.settings.useCheckoutAssistant) {
+        const checkout = getCheckoutGuide(player.score);
+        dom.checkoutHint.innerText = checkout ? `Checkout: ${checkout}` : "";
+    } else {
+        dom.checkoutHint.innerText = ""; // Ensure it's cleared if disabled
+    }
 
     // Darts thrown display
     dom.dartsThrownSpans.forEach((span, i) => {
-        span.innerText = turnScores[i] !== undefined ? turnScores[i] : '-';
-        span.classList.toggle('active', i === turnScores.length);
+        span.innerText = leg.turnScores[i] !== undefined ? leg.turnScores[i] : '-';
+        span.classList.toggle('active', i === leg.turnScores.length);
     });
 
     // Update multiplier buttons
@@ -292,58 +326,92 @@ function updateUI() {
 
     // Leaderboard
     const cards = dom.leaderboard.children;
-    players.forEach((p, index) => {
+    match.players.forEach((p, index) => {
         const card = cards[index];
         if (card) {
             card.children[1].innerText = p.score; // Update score
             card.children[2].innerText = `Avg: ${getAverage(p)}`; // Update average
-            card.classList.toggle('active', index === currentPlayerIndex);
+            card.classList.toggle('active', index === leg.currentPlayerIndex);
         }
     });
     
     // Scroll active player into view
     const activeCard = document.querySelector('.player-card.active');
     if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+    drawBurnDownChart();
 }
 
 function showWinScreen(player) {
-    document.getElementById('winnerText').innerText = `${player.name} Wins!`;
     player.legsWon += 1;
     saveGameStats(player.name); // Save stats to server
+
+    // Check for match win
+    if (player.legsWon >= match.settings.legsToWin) {
+        showMatchSummary(player);
+    } else {
+        // Just a leg win
+        document.getElementById('winnerText').innerText = `${player.name} Wins the Leg!`;
+        dom.winModal.querySelector('.btn').setAttribute('onclick', 'startNewLeg()');
+        dom.winModal.querySelector('.btn').innerText = 'Start Next Leg';
+    }
+
     dom.winModal.querySelector('#winnerStats').innerText = `Final 3-Dart Avg: ${getAverage(player)}`;
     dom.winModal.style.display = 'flex';
-    // Override the play again button to reset the leg, not the whole game
-    dom.winModal.querySelector('.btn').setAttribute('onclick', 'startNewLeg()');
-    dom.winModal.querySelector('.btn').innerText = 'Start Next Leg';
 }
 
-function startNewLeg() {
-    // Reset scores, keep players and legs won
-    players.forEach(p => {
-        p.score = startScore;
+function showMatchSummary(winner) {
+    match.isOver = true;
+    saveMatchRecord(winner); // Save the final match record to the server
+    dom.matchSummaryScreen.style.display = 'flex';
+
+    document.getElementById('matchWinnerName').innerText = `${winner.name} wins the match ${winner.legsWon} - ${match.players.find(p => p.name !== winner.name)?.legsWon || 0}!`;
+
+    const summaryBody = document.getElementById('matchSummaryBody');
+    summaryBody.innerHTML = ''; // Clear previous summary
+
+    // Sort players by legs won for the summary table
+    const sortedPlayers = [...match.players].sort((a, b) => b.legsWon - a.legsWon);
+
+    sortedPlayers.forEach(p => {
+        const row = document.createElement('tr');
+        if (p.name === winner.name) row.classList.add('winner-row');
+        row.innerHTML = `<td>${p.name}</td><td>${p.legsWon}</td><td>${getMatchAverage(p)}</td>`;
+        summaryBody.appendChild(row);
+    });
+}
+
+function startNewLeg(isFirstLeg = false) {
+    if (!isFirstLeg) {
+        match.currentLeg.number += 1;
+        // Cycle starting player for the new leg
+        match.currentLeg.startingPlayerIndex = (match.currentLeg.startingPlayerIndex + 1) % match.players.length;
+    }
+
+    match.currentLeg.currentPlayerIndex = match.currentLeg.startingPlayerIndex;
+    match.currentLeg.turnScores = [];
+    match.currentLeg.history = [];
+
+    // Reset scores and leg-specific stats for all players
+    match.players.forEach(p => {
+        p.score = match.settings.startScore;
         p.legTurnScores = []; // Clear turn scores for the new leg
-        // Reset stats for the new leg, but keep legsWon
         p.totalPointsScored = 0;
         p.dartsThrown = 0;
     });
-    leg += 1;
-    currentPlayerIndex = 0; // Or cycle starting player
-    turnScores = [];
-    gameHistory = [];
+
     currentThrow = { base: null, multiplier: 1 };
-    dom.winModal.style.display = 'none';
+    if (dom.winModal) dom.winModal.style.display = 'none';
 
-    // No need to re-initialize, just update
-    updateUI();
-
+    if (!isFirstLeg) updateUI();
 }
 
 // --- API Communication ---
 
 async function saveGameStats(winnerName) {
-    if (!allRegisteredPlayers) return; // Don't save if server is offline
+    if (Object.keys(allRegisteredPlayers).length === 0) return; // Don't save if server is offline or no players
 
-    const playerUpdates = players.map(p => {
+    const playerUpdates = match.players.map(p => {
         const registeredPlayer = allRegisteredPlayers[p.name] || {};
         
         // Update turn score frequency
@@ -391,6 +459,44 @@ async function saveGameStats(winnerName) {
     }
 }
 
+async function saveMatchRecord(winner) {
+    if (Object.keys(allRegisteredPlayers).length === 0) return; // Don't save if server is offline
+
+    const finalStandings = [...match.players]
+        .sort((a, b) => b.legsWon - a.legsWon)
+        .map(p => ({
+            name: p.name,
+            legsWon: p.legsWon,
+            matchAverage: getMatchAverage(p)
+        }));
+
+    const matchData = {
+        winner: winner.name,
+        standings: finalStandings,
+        settings: {
+            startScore: match.settings.startScore,
+            legsToWin: match.settings.legsToWin,
+            checkoutAssistantUsed: match.settings.useCheckoutAssistant,
+        },
+        timestamp: new Date().toISOString()
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/matches`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify(matchData)
+        });
+        if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+        console.log("Match record saved successfully.");
+    } catch (error) {
+        console.error("Failed to save match record:", error);
+    }
+}
+
 // --- Stats Screen Logic ---
 
 function renderStatsPlayerList() {
@@ -412,7 +518,7 @@ function renderStatsPlayerList() {
     });
 }
 
-function displayPlayerStats(playerName) {
+async function displayPlayerStats(playerName) {
     // Highlight the selected player in the list
     document.querySelectorAll('#registeredPlayersUl li').forEach(li => {
         li.classList.toggle('active-stat-player', li.innerText === playerName);
@@ -449,6 +555,9 @@ function displayPlayerStats(playerName) {
     }
     turnScoresHtml += '</ul>';
 
+    // --- Head-to-Head Stats ---
+    const h2hStatsHtml = await renderHeadToHeadStats(playerName);
+
     detailsContainer.innerHTML = `
         <h2>${player.name}</h2>
         <p><strong>Win Rate:</strong> ${winRate}% (${player.gamesWon} wins / ${player.gamesPlayed} played)</p>
@@ -459,8 +568,204 @@ function displayPlayerStats(playerName) {
         <h3>Most Common Turn Scores:</h3>
         ${turnScoresHtml}
         <h3>Average History (last 10 games):</h3>
-        <p>${player.averageHistory.slice(-10).join(' | ') || 'No completed games.'}</p>
+        <div id="avgChartContainer"></div>
+        <hr>
+        <h3>Head-to-Head Record:</h3>
+        ${h2hStatsHtml}
     `;
+
+    // Now that the container exists in the DOM, draw the chart
+    drawAverageHistoryChart(player.averageHistory);
+}
+
+function drawBurnDownChart() {
+    const container = document.getElementById('burnDownChartContainer');
+    if (!container || !google.visualization) return;
+
+    const leg = match.currentLeg;
+    const history = leg.history;
+    const players = match.players;
+
+    const dataTable = new google.visualization.DataTable();
+    dataTable.addColumn('number', 'Darts Thrown');
+    players.forEach(p => dataTable.addColumn('number', p.name));
+
+    // Add the starting point (0 darts thrown)
+    const initialRow = [0, ...players.map(() => match.settings.startScore)];
+    dataTable.addRow(initialRow);
+
+    // Add a row for each dart thrown in the history
+    history.forEach((state, index) => {
+        const dartNumber = index + 1;
+        const scores = state.players.map(p => p.score);
+        dataTable.addRow([dartNumber, ...scores]);
+    });
+    // Add the current state after the last dart
+    if (history.length > 0) {
+         const currentScores = players.map(p => p.score);
+         dataTable.addRow([history.length + leg.turnScores.length, ...currentScores]);
+    }
+
+    const options = {
+        title: 'Score Burn-Down',
+        titleTextStyle: { color: '#FFF' },
+        curveType: 'none', // Use straight lines
+        legend: { position: 'top', textStyle: { color: '#CCC' } },
+        backgroundColor: 'transparent',
+        chartArea: { backgroundColor: 'transparent', width: '85%', height: '65%' },
+        hAxis: { 
+            title: 'Darts Thrown in Leg',
+            titleTextStyle: { color: '#999' },
+            textStyle: { color: '#999' } 
+        },
+        vAxis: { 
+            textStyle: { color: '#999' },
+            gridlines: { color: '#444' },
+            baselineColor: '#666'
+        },
+    };
+
+    const chart = new google.visualization.LineChart(container);
+    chart.draw(dataTable, options);
+}
+
+function drawAverageHistoryChart(history) {
+    const container = document.getElementById('avgChartContainer');
+    const data = history.slice(-10).map(Number);
+
+    if (data.length < 2) {
+        container.innerHTML = '<p>Not enough data to display a chart.</p>';
+        return;
+    }
+
+    const chartData = new google.visualization.DataTable();
+    chartData.addColumn('string', 'Game');
+    chartData.addColumn('number', 'Average');
+
+    data.forEach((avg, i) => {
+        chartData.addRow([`Game ${i + 1}`, avg]);
+    });
+
+    const options = {
+        title: '3-Dart Average Trend',
+        titleTextStyle: { color: '#FFF' },
+        curveType: 'function',
+        legend: { position: 'none' },
+        backgroundColor: 'transparent',
+        chartArea: { backgroundColor: 'transparent', width: '85%', height: '70%' },
+        hAxis: { textStyle: { color: '#999' } },
+        vAxis: { 
+            textStyle: { color: '#999' },
+            gridlines: { color: '#444' },
+            baselineColor: '#666'
+        },
+        colors: ['#00d2be'], // --accent-color
+        pointsVisible: true,
+        pointSize: 5,
+    };
+
+    const chart = new google.visualization.LineChart(container);
+    chart.draw(chartData, options);
+}
+
+async function renderHeadToHeadStats(playerName) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/matches`);
+        if (!response.ok) throw new Error('Failed to fetch matches for H2H stats');
+        const allMatches = await response.json();
+
+        const h2hRecords = {};
+
+        for (const match of allMatches) {
+            const playerInMatch = match.standings.find(p => p.name === playerName);
+            if (!playerInMatch) continue; // Player wasn't in this match
+
+            for (const opponent of match.standings) {
+                if (opponent.name === playerName) continue; // Don't compare to self
+
+                // Initialize opponent record if it doesn't exist
+                if (!h2hRecords[opponent.name]) {
+                    h2hRecords[opponent.name] = { wins: 0, losses: 0 };
+                }
+
+                if (match.winner === playerName) {
+                    h2hRecords[opponent.name].wins += 1;
+                } else if (match.winner === opponent.name) {
+                    h2hRecords[opponent.name].losses += 1;
+                }
+            }
+        }
+
+        if (Object.keys(h2hRecords).length === 0) {
+            return '<p>No head-to-head matches recorded.</p>';
+        }
+
+        let tableHtml = '<table class="h2h-table"><thead><tr><th>Opponent</th><th>Record (W-L)</th></tr></thead><tbody>';
+        for (const opponentName in h2hRecords) {
+            tableHtml += `<tr><td>${opponentName}</td><td>${h2hRecords[opponentName].wins} - ${h2hRecords[opponentName].losses}</td></tr>`;
+        }
+        return tableHtml + '</tbody></table>';
+    } catch (error) {
+        console.error("Could not render H2H stats:", error);
+        return '<p style="color: var(--danger-color);">Could not load head-to-head data.</p>';
+    }
+}
+
+// --- Match History Screen ---
+
+async function loadMatchHistory() {
+    const container = document.getElementById('matchHistoryContainer');
+    container.innerHTML = '<p>Loading match history...</p>';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/matches`);
+        if (!response.ok) throw new Error('Failed to fetch match history');
+        const matches = await response.json();
+        renderMatchHistory(matches);
+    } catch (error) {
+        console.error("Could not load match history:", error);
+        container.innerHTML = '<p style="color: var(--danger-color);">Error loading match history. Is the server running?</p>';
+    }
+}
+
+function renderMatchHistory(matches) {
+    const container = document.getElementById('matchHistoryContainer');
+    if (matches.length === 0) {
+        container.innerHTML = '<p>No completed matches found.</p>';
+        return;
+    }
+
+    container.innerHTML = matches.map((match, index) => {
+        const winner = match.standings[0];
+        const opponent = match.standings[1];
+        const score = `${winner.legsWon} - ${opponent ? opponent.legsWon : 0}`;
+        const date = new Date(match.timestamp).toLocaleString();
+
+        return `
+            <div class="match-card">
+                <div class="match-card-header" onclick="toggleMatchDetails(${index})">
+                    <div>
+                        <span class="match-card-winner"><span class="winner-icon">🏆</span> ${winner.name}</span>
+                        <span>vs ${opponent ? opponent.name : '...'} (${score})</span>
+                    </div>
+                    <span class="match-card-date">${date}</span>
+                </div>
+                <div class="match-card-details" id="match-details-${index}">
+                    <table class="summary-table">
+                        <thead><tr><th>Player</th><th>Legs Won</th><th>Match Avg</th></tr></thead>
+                        <tbody>
+                            ${match.standings.map(p => `<tr><td>${p.name}</td><td>${p.legsWon}</td><td>${p.matchAverage}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleMatchDetails(index) {
+    const details = document.getElementById(`match-details-${index}`);
+    details.style.display = details.style.display === 'block' ? 'none' : 'block';
 }
 
 // --- Initialization ---
@@ -513,6 +818,7 @@ async function loadRegisteredPlayers() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Cache all DOM elements
+    dom.setupPlayers = [];
     dom.setupScreen = document.getElementById('setupScreen');
     dom.gameScreen = document.getElementById('gameScreen');
     dom.statsScreen = document.getElementById('statsScreen');
@@ -527,6 +833,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     dom.inputDisplay = document.getElementById('inputDisplay');
     dom.legDisplay = document.querySelector('header span');
     dom.winModal = document.getElementById('winModal');
+    dom.matchSummaryScreen = document.getElementById('matchSummaryScreen');
+    dom.matchHistoryScreen = document.getElementById('matchHistoryScreen');
+
+    // Load Google Charts library
+    google.charts.load('current', { 'packages': ['corechart'] });
 
     const isServerOnline = await checkServerStatus();
     if (isServerOnline) {
