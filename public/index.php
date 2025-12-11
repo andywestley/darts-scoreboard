@@ -13,8 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         // CSRF token mismatch, handle the error appropriately.
         // For simplicity, we can just exit or show an error.
-        http_response_code(403);
-        die('CSRF token validation failed.');
+        http_response_code(403); // Forbidden
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'error' => 'CSRF token validation failed.'
+        ]);
+        exit;
     }
 }
 
