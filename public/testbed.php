@@ -3,6 +3,9 @@ require_once __DIR__ . '/../bootstrap.php';
 
 $response = '';
 
+// Close the session to prevent deadlocks when cURL calls back to the same server.
+session_write_close();
+
 function make_request($url, $post_data = null) {
     $ch = curl_init();
     
