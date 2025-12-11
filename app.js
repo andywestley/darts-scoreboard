@@ -97,6 +97,7 @@ function startGame() {
             startScore: parseInt(document.getElementById('gameType').value),
             legsToWin: parseInt(document.getElementById('matchLegs').value),
             useCheckoutAssistant: document.getElementById('checkoutAssistantToggle').checked,
+            useSoundEffects: document.getElementById('soundEffectsToggle').checked,
         },
         currentLeg: {
             number: 1,
@@ -202,6 +203,8 @@ function submitScore(dartScore) {
     player.matchDartsThrown += 1;
     player.matchTotalPointsScored += dartScore;
 
+    playSound('dartHitSound');
+
     player.score -= dartScore;
 
     // --- Check for Win or Bust ---
@@ -212,11 +215,13 @@ function submitScore(dartScore) {
         if (isDoubleOut) {
             // VALID WIN!
             updateUI(); // Update to show the final dart
+            playSound('winSound');
             setTimeout(() => showWinScreen(player), 200); // Short delay to see the final score
             return;
         } else {
             // BUST! Invalid checkout (not a double).
             alert("BUST! You must finish on a double.");
+            playSound('bustSound');
             // Revert score and stats for the turn
             const turnTotal = leg.turnScores.reduce((a, b) => a + b, 0);
             player.score += turnTotal;
@@ -229,6 +234,7 @@ function submitScore(dartScore) {
     } else if (player.score < 0 || player.score === 1) {
         // BUST!
         alert("BUST!");
+        playSound('bustSound');
         // Revert score and stats for the turn
         const turnTotal = leg.turnScores.reduce((a, b) => a + b, 0);
         player.score += turnTotal;
@@ -271,7 +277,12 @@ function nextTurn() {
     // Use a timeout to allow the player to see the result of their last dart
     // Record the turn score for the current player before switching
     const player = match.players[match.currentLeg.currentPlayerIndex];
-    player.legTurnScores.push(match.currentLeg.turnScores.reduce((a, b) => a + b, 0));
+    const turnTotal = match.currentLeg.turnScores.reduce((a, b) => a + b, 0);
+    player.legTurnScores.push(turnTotal);
+
+    if (turnTotal === 180) {
+        playSound('oneEightySound');
+    }
 
     setTimeout(() => {
         match.currentLeg.currentPlayerIndex = (match.currentLeg.currentPlayerIndex + 1) % match.players.length;
@@ -279,6 +290,27 @@ function nextTurn() {
         currentThrow = { base: null, multiplier: 1 };
         updateUI();
     }, 800);
+}
+
+function playSound(soundId) {
+    // Check if sounds are globally enabled for the match
+    if (!match.settings?.useSoundEffects) return;
+
+    const sound = document.getElementById(soundId);
+
+    // Check if the sound element exists and has not previously failed
+    if (sound && sound.dataset.failed !== 'true') {
+        sound.currentTime = 0; // Rewind to the start
+        const playPromise = sound.play();
+
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.error(`Could not play sound '${soundId}'. It will be disabled for this session.`, error);
+                // Mark this sound as failed to prevent future attempts and console spam.
+                sound.dataset.failed = 'true';
+            });
+        }
+    }
 }
 
 function getAverage(player) {

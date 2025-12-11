@@ -39,6 +39,13 @@
             </div>
 
             <div class="input-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="soundEffectsToggle" checked>
+                    <label for="soundEffectsToggle">Enable Sound Effects</label>
+                </div>
+            </div>
+
+            <div class="input-group">
                 <label>Add Players</label>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="newPlayerName" placeholder="Enter name...">
@@ -166,6 +173,12 @@
             <button class="btn" onclick="location.reload()" style="max-width: 250px;">Start New Match</button>
         </div>
     </div>
+
+    <!-- Audio Elements for Sound Effects -->
+    <audio id="dartHitSound" src="sounds/click.mp3" preload="auto"></audio>
+    <audio id="bustSound" src="sounds/bust.mp3" preload="auto"></audio>
+    <audio id="oneEightySound" src="sounds/180.mp3" preload="auto"></audio>
+    <audio id="winSound" src="sounds/win.mp3" preload="auto"></audio>
 
     <script src="app.js"></script>
 </body>
