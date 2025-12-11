@@ -74,8 +74,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <div class="input-group">
                 <label>Match Format (First to)</label>
                 <select id="matchLegs">
-                    <option value="1">1 Leg</option>
-                    <option value="3" selected>3 Legs</option>
+                    <option value="1" selected>1 Leg</option>
+                    <option value="3">3 Legs</option>
                     <option value="5">5 Legs</option>
                 </select>
             </div>
