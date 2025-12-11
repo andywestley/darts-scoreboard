@@ -247,6 +247,11 @@ $reportData = run_diagnostics();
         </div>
     </div>
 
+    <!-- Embed the full report data as JSON for the copy-to-clipboard functionality -->
+    <script id="report-data-json" type="application/json">
+        <?php echo json_encode($reportData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?>
+    </script>
+
     <!-- Pinned Footer for Interactive Testbed -->
     <div class="response-container">
         <div class="response-pane">
