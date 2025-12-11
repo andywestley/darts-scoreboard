@@ -68,6 +68,7 @@ class Storage
         }
         $initialData = [
             'version' => self::CODE_VERSION,
+            'last_updated' => date('c'),
             'data' => []
         ];
         file_put_contents($filePath, json_encode($initialData, JSON_PRETTY_PRINT));
@@ -78,6 +79,7 @@ class Storage
         $this->dataCache[$key] = $data;
         $structuredData = [
             'version' => self::CODE_VERSION,
+            'last_updated' => date('c'),
             'data' => $data
         ];
         file_put_contents($filePath, json_encode($structuredData, JSON_PRETTY_PRINT));
