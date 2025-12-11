@@ -1,5 +1,8 @@
-# Ignore the data directory
-data/
+# Ignore the contents of the data directory...
+data/*.json
+# ...but not the .htaccess file inside it.
+!data/.htaccess
 
-# Ignore Python virtual environment
-venv/
+# Ignore Composer dependencies
+# Ignore environment files
+.env
