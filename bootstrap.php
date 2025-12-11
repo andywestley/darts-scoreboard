@@ -1,7 +1,9 @@
 <?php
 
 // 1. Start the session for all requests.
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // 2. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.
