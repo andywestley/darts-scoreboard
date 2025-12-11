@@ -46,6 +46,27 @@ function run_diagnostics() {
     }
     $report['permissions'] = $permResults;
 
+    // --- Preliminary Step: Reset the session to ensure a clean test run ---
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
+    
+    // Start a session just to get a valid cookie and initial CSRF to perform the reset
+    if (session_status() === PHP_SESSION_NONE) { session_start(); }
+    $initialCsrf = $_SESSION['csrf_token'];
+    $initialCookie = 'PHPSESSID=' . session_id();
+    if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+
+    $resetCh = curl_init($baseUrl);
+    curl_setopt($resetCh, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($resetCh, CURLOPT_HEADER, 0);
+    curl_setopt($resetCh, CURLOPT_COOKIE, $initialCookie);
+    curl_setopt($resetCh, CURLOPT_HTTPHEADER, ['X-Action: session:reset']);
+    curl_setopt($resetCh, CURLOPT_POST, 1);
+    curl_setopt($resetCh, CURLOPT_POSTFIELDS, http_build_query(['csrf_token' => $initialCsrf]));
+    curl_exec($resetCh);
+    curl_close($resetCh);
+    // The session is now destroyed on the server side.
+
     // --- Test 2: API Endpoint Execution ---
     // We need the CSRF token for POST requests.
     // We must start the session to get it, then close it before making cURL requests.
@@ -59,12 +80,9 @@ function run_diagnostics() {
         session_write_close();
     }
 
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
     $playersDataFile = __DIR__ . '/../data/players.json';
 
     $apiTests = [
-        ['action' => 'session:reset', 'method' => 'POST', 'data' => []],
         ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player A']],
         ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player B']],
         ['action' => 'game:start', 'method' => 'POST', 'data' => ['gameType' => '501', 'matchLegs' => '3']],
