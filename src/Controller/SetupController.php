@@ -22,6 +22,13 @@ class SetupController
             return;
         }
 
+        // First, ensure the player exists in the permanent storage for stat tracking.
+        // This should happen regardless of the current game session.
+        if ($this->storage->getPlayerByName($playerName) === null) {
+            $this->storage->addPlayer($playerName);
+        }
+
+        // Next, handle the logic for the current game session.
         $players = $_SESSION['setup_players'] ?? [];
         if (in_array($playerName, $players)) {
             $this->jsonResponse(['success' => false, 'message' => 'Player already added.']);
@@ -30,11 +37,6 @@ class SetupController
 
         $players[] = $playerName;
         $_SESSION['setup_players'] = $players;
-
-        // Also ensure the player exists in persistent storage for future stat tracking.
-        if ($this->storage->getPlayerByName($playerName) === null) {
-            $this->storage->addPlayer($playerName);
-        }
 
         $this->jsonResponse(['success' => true, 'players' => $players]);
     }
