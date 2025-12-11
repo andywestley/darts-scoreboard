@@ -40,11 +40,7 @@ body {
     color: var(--text-color);
     margin: 0;
     padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
     min-height: 100vh;
-    box-sizing: border-box;
 }
 
 h1, h2, h3 {
@@ -67,6 +63,7 @@ a {
     display: none;
     width: 100%;
     max-width: 700px;
+    margin: 0 auto; /* Center the screen container */
     animation: fadeIn 0.4s ease-in-out;
 }
 
