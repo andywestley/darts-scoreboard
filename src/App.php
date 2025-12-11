@@ -46,20 +46,9 @@ class App
         ];
     }
 
-    public function run(): void
+    public function run(string $action): void
     {
-        $action = $_POST['action'] ?? $_GET['action'] ?? '';
-
-        // CSRF check for POST requests
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-                http_response_code(403);
-                echo json_encode(['success' => false, 'message' => 'CSRF token mismatch']);
-                return;
-            }
-        }
-
-        if (isset($this->routes[$action])) {
+        if (!empty($action) && isset($this->routes[$action])) {
             $route = $this->routes[$action];
             if (is_callable($route)) {
                 // Unpack the controller and method for clarity

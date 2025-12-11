@@ -29,7 +29,7 @@ if ($action) {
     ob_start(); // Start output buffering
     try {
         $app = new App();
-        $app->run();
+        $app->run($action);
     } catch (Exception $e) {
         // This will be caught by the global exception handler in bootstrap.php
         // but we have it here for clarity. The handler will format it as JSON.
