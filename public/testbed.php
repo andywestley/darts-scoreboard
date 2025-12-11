@@ -73,76 +73,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>API Testbed</title>
     <style>
-        body { font-family: sans-serif; background-color: #2c2c2c; color: #f0f0f0; padding: 20px; }
+        :root { --response-height: 220px; }
+        body { font-family: sans-serif; background-color: #2c2c2c; color: #f0f0f0; padding: 20px; padding-bottom: calc(var(--response-height) + 20px); }
         .container { max-width: 900px; margin: auto; }
         fieldset { border: 1px solid #444; margin-bottom: 20px; padding: 15px; }
         legend { font-weight: bold; color: #00d1b2; padding: 0 5px; }
         form { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         button { background-color: #00d1b2; color: #1a1a1a; border: none; padding: 8px 12px; cursor: pointer; }
         input[type="text"], input[type="number"] { padding: 8px; }
-        textarea { width: 100%; height: 150px; background-color: #1a1a1a; color: #f0f0f0; border: 1px solid #444; font-family: monospace; }
         h1, h2 { color: #00d1b2; }
         .note { font-size: 0.9em; color: #aaa; }
+
+        .response-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--response-height);
+            background-color: #1e1e1e;
+            border-top: 2px solid #00d1b2;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+        .response-container h2 { margin: 0 0 10px 0; }
+        .response-container textarea { flex-grow: 1; width: 100%; background-color: #1a1a1a; color: #f0f0f0; border: 1px solid #444; font-family: monospace; box-sizing: border-box; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎯 API Testbed</h1>
-        <p>Use this page to test API actions independently. The raw server response will appear in the text area below.</p>
+        <div class="scrollable-content">
+            <h1>🎯 API Testbed</h1>
+            <p>Use this page to test API actions independently. The raw server response will appear in the pinned window below.</p>
 
-        <fieldset>
-            <legend>Setup Actions</legend>
-            <form method="POST">
-                <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
-            </form>
-            <form method="POST">
-                <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
-                <button type="submit" name="action" value="add_player">Add Player</button>
-            </form>
-            <form method="POST">
-                <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
-                <button type="submit" name="action" value="remove_player">Remove Player</button>
-            </form>
-            <form method="POST">
-                <button type="submit" name="action" value="start_game">Start Game</button>
-                <span class="note">(Adds 'Player 1' & 'Player 2' then starts a 501/3 game)</span>
-            </form>
-        </fieldset>
+            <fieldset>
+                <legend>Setup Actions</legend>
+                <form method="POST">
+                    <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
+                </form>
+                <form method="POST">
+                    <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
+                    <button type="submit" name="action" value="add_player">Add Player</button>
+                </form>
+                <form method="POST">
+                    <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
+                    <button type="submit" name="action" value="remove_player">Remove Player</button>
+                </form>
+                <form method="POST">
+                    <button type="submit" name="action" value="start_game">Start Game</button>
+                    <span class="note">(Adds 'Player 1' & 'Player 2' then starts a 501/3 game)</span>
+                </form>
+            </fieldset>
 
-        <fieldset>
-            <legend>Game Actions</legend>
-            <p class="note">A game must be started for these to work.</p>
-            <form method="POST">
-                <input type="number" name="score" placeholder="Score" value="100" required>
-                <button type="submit" name="action" value="submit_score">Submit Score</button>
-            </form>
-            <form method="POST">
-                <button type="submit" name="action" value="undo">Undo Last Score</button>
-            </form>
-        </fieldset>
+            <fieldset>
+                <legend>Game Actions</legend>
+                <p class="note">A game must be started for these to work.</p>
+                <form method="POST">
+                    <input type="number" name="score" placeholder="Score" value="100" required>
+                    <button type="submit" name="action" value="submit_score">Submit Score</button>
+                </form>
+                <form method="POST">
+                    <button type="submit" name="action" value="undo">Undo Last Score</button>
+                </form>
+            </fieldset>
 
-        <fieldset>
-            <legend>Stats Actions</legend>
-            <form method="POST">
-                <button type="submit" name="action" value="get_players">Get All Players</button>
-            </form>
-            <form method="POST">
-                <button type="submit" name="action" value="get_matches">Get All Matches</button>
-            </form>
-            <form method="POST">
-                <input type="text" name="player1" placeholder="Player 1" value="Player 1" required>
-                <input type="text" name="player2" placeholder="Player 2" value="Player 2" required>
-                <button type="submit" name="action" value="get_h2h_stats">Get H2H Stats</button>
-            </form>
-        </fieldset>
+            <fieldset>
+                <legend>Stats Actions</legend>
+                <form method="POST">
+                    <button type="submit" name="action" value="get_players">Get All Players</button>
+                </form>
+                <form method="POST">
+                    <button type="submit" name="action" value="get_matches">Get All Matches</button>
+                </form>
+                <form method="POST">
+                    <input type="text" name="player1" placeholder="Player 1" value="Player 1" required>
+                    <input type="text" name="player2" placeholder="Player 2" value="Player 2" required>
+                    <button type="submit" name="action" value="get_h2h_stats">Get H2H Stats</button>
+                </form>
+            </fieldset>
 
-        <fieldset>
-            <legend>Session Management</legend>
-            <form method="POST">
-                <button type="submit" name="action" value="reset">Reset Session</button>
-            </form>
-        </fieldset>
+            <fieldset>
+                <legend>Session Management</legend>
+                <form method="POST">
+                    <button type="submit" name="action" value="reset">Reset Session</button>
+                </form>
+            </fieldset>
+        </div>
+    </div>
 
+    <div class="response-container">
         <h2>API Response</h2>
         <textarea readonly><?php echo htmlspecialchars($response); ?></textarea>
     </div>
