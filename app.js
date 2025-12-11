@@ -9,6 +9,13 @@ let currentThrow = { // Holds state for the current dart being entered
 };
 let gameHistory = []; // To store state for the undo feature
 
+// --- API & Player Data ---
+const API_BASE_URL = 'http://127.0.0.1:5001'; // URL of your Python server
+const API_KEY = "your-super-secret-key"; // IMPORTANT: Must match the key in server.py
+let allRegisteredPlayers = {}; // Stores players loaded from the server, indexed by name
+
+
+
 // --- Setup Logic ---
 function addPlayer() {
     const input = document.getElementById('newPlayerName');
@@ -48,6 +55,13 @@ function renderPlayerList() {
     `).join('');
 }
 
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+
+    if (screenId === 'statsScreen') renderStatsPlayerList();
+}
+
 function startGame() {
     if (players.length === 0) {
         alert("Please add at least one player.");
@@ -60,6 +74,7 @@ function startGame() {
     
     document.getElementById('setupScreen').classList.remove('active');
     document.getElementById('gameScreen').classList.add('active');
+    showScreen('gameScreen');
     
     turnScores = [];
     gameHistory = [];
@@ -71,6 +86,7 @@ function startGame() {
 
 function generateNumberButtons() {
     const container = document.querySelector('.numbers');
+    if (container.children.length > 0) return; // Only generate once
     container.innerHTML = '';
     for (let i = 1; i <= 20; i++) {
         const btn = document.createElement('button');
@@ -98,6 +114,9 @@ function selectNumber(number) {
 }
 
 function enterSpecial(score) {
+    // For special scores, there's no base number or multiplier
+    currentThrow.base = null;
+    currentThrow.multiplier = 1;
     submitScore(score);
 }
 
@@ -202,6 +221,7 @@ function getAverage(player) {
 }
 
 function updateUI() {
+    if (players.length === 0 || !document.getElementById('gameScreen').classList.contains('active')) return;
     const player = players[currentPlayerIndex];
     
     // Main Display
@@ -264,6 +284,89 @@ function startNewLeg() {
     updateUI();
 
 }
+
+// --- Stats Screen Logic ---
+
+function renderStatsPlayerList() {
+    const ul = document.getElementById('registeredPlayersUl');
+    ul.innerHTML = ''; // Clear existing list
+
+    const playerNames = Object.keys(allRegisteredPlayers).sort();
+
+    if (playerNames.length === 0) {
+        ul.innerHTML = '<li>No registered players found.</li>';
+        return;
+    }
+
+    playerNames.forEach(name => {
+        const li = document.createElement('li');
+        li.innerText = name;
+        li.onclick = () => displayPlayerStats(name);
+        ul.appendChild(li);
+    });
+}
+
+function displayPlayerStats(playerName) {
+    // Highlight the selected player in the list
+    document.querySelectorAll('#registeredPlayersUl li').forEach(li => {
+        li.classList.toggle('active-stat-player', li.innerText === playerName);
+    });
+
+    const detailsContainer = document.getElementById('playerStatsDetails');
+    const player = allRegisteredPlayers[playerName];
+
+    if (!player) {
+        detailsContainer.innerHTML = '<h2>Error</h2><p>Player not found.</p>';
+        return;
+    }
+
+    const overallAverage = (player.totalDartsThrown > 0)
+        ? ((player.totalPointsScored / player.totalDartsThrown) * 3).toFixed(2)
+        : "0.00";
+
+    const winRate = (player.gamesPlayed > 0)
+        ? ((player.gamesWon / player.gamesPlayed) * 100).toFixed(1)
+        : "0.0";
+
+    // Get top 3 most common turn scores
+    const sortedTurnScores = Object.entries(player.turnScoreFrequency || {})
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3);
+
+    let turnScoresHtml = '<ul>';
+    if (sortedTurnScores.length > 0) {
+        sortedTurnScores.forEach(([score, count]) => {
+            turnScoresHtml += `<li><strong>${score}</strong>: ${count} times</li>`;
+        });
+    } else {
+        turnScoresHtml += '<li>No turn scores recorded.</li>';
+    }
+    turnScoresHtml += '</ul>';
+
+    detailsContainer.innerHTML = `
+        <h2>${player.name}</h2>
+        <p><strong>Win Rate:</strong> ${winRate}% (${player.gamesWon} wins / ${player.gamesPlayed} played)</p>
+        <p><strong>Overall 3-Dart Avg:</strong> ${overallAverage}</p>
+        <p><strong>Total Darts Thrown:</strong> ${player.totalDartsThrown}</p>
+        <p><strong>Legs Won:</strong> ${player.legsWon || 0}</p>
+        <hr>
+        <h3>Most Common Turn Scores:</h3>
+        ${turnScoresHtml}
+        <h3>Average History (last 10 games):</h3>
+        <p>${player.averageHistory.slice(-10).join(' | ') || 'No completed games.'}</p>
+    `;
+}
+
+// --- Initialization ---
+async function loadRegisteredPlayers() {
+    // This function will be implemented in the next step
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    generateNumberButtons();
+    // loadRegisteredPlayers(); // We will uncomment this when the server is ready
+});
+
 
 // --- Checkout Logic (Standard Checkouts) ---
 function getCheckoutGuide(score) {

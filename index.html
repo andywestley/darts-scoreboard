@@ -29,9 +29,13 @@
                 </div>
             </div>
 
-            <div class="player-list" id="playerList"></div>
+            <div class="input-group">
+                <label>Players in Game</label>
+                <div class="player-list" id="playerList"></div>
+            </div>
 
             <button class="btn" onclick="startGame()">Start Game</button>
+            <button class="btn btn-secondary" onclick="showScreen('statsScreen')">View Player Stats</button>
         </div>
     </div>
 
@@ -71,6 +75,28 @@
                     <button class="key key-bull" onclick="enterSpecial(25)">OUTER BULL</button>
                     <button class="key key-bull" onclick="enterSpecial(50)">BULLSEYE</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsScreen" class="screen">
+        <header>
+            <a href="#" onclick="showScreen('setupScreen')" class="reset-link">← Back to Setup</a>
+            <span style="color: var(--accent-color); font-weight: bold;">Player Statistics</span>
+        </header>
+
+        <div class="stats-container">
+            <div class="player-stats-list">
+                <h2>Registered Players</h2>
+                <ul id="registeredPlayersUl">
+                    <!-- Player list will be populated by JS -->
+                </ul>
+            </div>
+
+            <div class="player-stats-details" id="playerStatsDetails">
+                <!-- Selected player's stats will be shown here -->
+                <h2>Select a Player</h2>
+                <p>Click on a player from the list to see their detailed stats.</p>
             </div>
         </div>
     </div>
