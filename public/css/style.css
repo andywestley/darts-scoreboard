@@ -74,8 +74,8 @@ a {
     display: block;
 }
 
-/* --- Block: setup-screen --- */
-.setup-screen__container {
+/* --- Block: containers --- */
+.setup-container, .stats-container, .match-history-container, .match-summary-container {
     background-color: var(--card-bg);
     padding: 25px;
     border-radius: 8px;
@@ -85,20 +85,20 @@ a {
     gap: 20px;
 }
 
-/* --- Block: form-group --- */
-.form-group {
+/* --- Block: input-group --- */
+.input-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.form-group__label {
+.input-group label {
     font-weight: bold;
     color: var(--text-color-secondary);
 }
 
-.form-group__input,
-.form-group select {
+.input-group input[type="text"],
+.input-group select {
     padding: 10px;
     border-radius: 5px;
     border: 1px solid var(--border-color);
@@ -109,14 +109,14 @@ a {
     box-sizing: border-box;
 }
 
-/* --- Block: checkbox-group --- */
+/* --- Block: checkbox-group (within input-group) --- */
 .checkbox-group {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.checkbox-group__input {
+.checkbox-group input[type="checkbox"] {
     accent-color: var(--accent-color);
 }
 
@@ -191,21 +191,21 @@ a {
     background-color: var(--secondary-button-hover-bg);
 }
 
-/* --- Block: game-screen --- */
-.game-screen__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+.btn-add-player {
+    width: auto;
+    padding: 10px 15px;
 }
 
-.header__link-reset {
-    color: var(--text-color-secondary);
+.btn-match-action {
+    max-width: 250px;
 }
 
-.game-screen__leg-display {
+.btn-modal-action {
+    max-width: 200px;
+}
+
+.reset-link {
     color: var(--text-color-secondary);
-    font-weight: bold;
 }
 
 .active-player-display {
@@ -213,20 +213,25 @@ a {
     margin-bottom: 20px;
 }
 
-.active-player-display__name {
+.player-name-large {
     font-size: 2em;
     font-weight: 300;
     color: var(--text-color);
 }
 
-.active-player-display__score {
+.current-score-large {
     font-size: 6em;
     font-weight: bold;
     line-height: 1;
     color: var(--highlight-color);
 }
 
-.active-player-display__avg {
+#legDisplay {
+    color: var(--text-color-secondary);
+    font-weight: bold;
+}
+
+.stats-badge {
     display: inline-block;
     background-color: var(--secondary-button-bg);
     color: var(--text-color-secondary);
@@ -236,7 +241,12 @@ a {
     margin-top: 10px;
 }
 
-.active-player-display__checkout-hint {
+.header-title {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+.checkout-suggestion {
     margin-top: 15px;
     font-size: 1.2em;
     color: var(--accent-color);
@@ -249,6 +259,11 @@ a {
     justify-content: center;
     gap: 15px;
     margin: 20px 0;
+}
+
+.player-input-controls {
+    display: flex;
+    gap: 10px;
 }
 
 .player-card {
@@ -266,20 +281,20 @@ a {
     transform: scale(1.05);
 }
 
-.player-card__name {
+.player-card .name {
     font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.player-card__score {
+.player-card .score {
     font-size: 2em;
     font-weight: bold;
     margin: 4px 0;
 }
 
-.player-card__avg {
+.player-card .avg {
     font-size: 0.8em;
     color: var(--text-color-secondary);
 }
@@ -292,7 +307,7 @@ a {
     margin-top: 20px;
 }
 
-.controls__darts-display {
+.darts-thrown-display {
     display: flex;
     justify-content: center;
     gap: 10px;
@@ -323,16 +338,16 @@ a {
     gap: 10px;
 }
 
-.dartboard-keypad__modifiers,
-.dartboard-keypad__numbers,
-.dartboard-keypad__specials {
+.dartboard-keypad .modifiers,
+.dartboard-keypad .numbers,
+.dartboard-keypad .specials {
     display: grid;
     gap: 10px;
 }
 
-.dartboard-keypad__modifiers { grid-template-columns: 1fr 1fr; grid-column: 1 / -1; }
-.dartboard-keypad__numbers { grid-template-columns: repeat(5, 1fr); grid-column: 1 / -1; }
-.dartboard-keypad__specials { grid-template-columns: 1fr 1fr; grid-column: 1 / -1; }
+.dartboard-keypad .modifiers { grid-template-columns: 1fr 1fr; grid-column: 1 / -1; }
+.dartboard-keypad .numbers { grid-template-columns: repeat(5, 1fr); grid-column: 1 / -1; }
+.dartboard-keypad .specials { grid-template-columns: 1fr 1fr; grid-column: 1 / -1; }
 
 .key {
     background-color: var(--key-bg);
@@ -374,30 +389,22 @@ a {
     box-sizing: border-box;
 }
 
-.modal__title {
+.modal h2 {
     font-size: 3em;
     color: var(--highlight-color);
     margin-bottom: 10px;
 }
 
-.modal__confetti {
+.modal .confetti {
     font-size: 1.5em;
     color: var(--text-color);
     margin-bottom: 10px;
 }
 
-.modal__stats {
+.modal .winner-stats {
     font-size: 1.2em;
     color: var(--text-color-secondary);
     margin-bottom: 30px;
-}
-
-/* --- Block: stats-screen & match-history-screen --- */
-.stats-screen__container,
-.match-history-screen__container {
-    background-color: var(--card-bg);
-    padding: 20px;
-    border-radius: 8px;
 }
 
 .player-stats-list__list {
