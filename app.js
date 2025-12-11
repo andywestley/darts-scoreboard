@@ -13,7 +13,25 @@ let gameHistory = []; // To store state for the undo feature
 const API_BASE_URL = 'http://127.0.0.1:5001'; // URL of your Python server
 const API_KEY = "your-super-secret-key"; // IMPORTANT: Must match the key in server.py
 let allRegisteredPlayers = {}; // Stores players loaded from the server, indexed by name
+let leg = 1;
 
+// --- DOM Element Cache ---
+const dom = {
+    setupScreen: null,
+    gameScreen: null,
+    statsScreen: null,
+    activeName: null,
+    activeScore: null,
+    activeAvg: null,
+    checkoutHint: null,
+    dartsThrownSpans: [],
+    leaderboard: null,
+    modDouble: null,
+    modTreble: null,
+    inputDisplay: null,
+    legDisplay: null,
+    winModal: null,
+};
 
 
 // --- Setup Logic ---
@@ -28,7 +46,8 @@ function addPlayer() {
             id: Date.now(),
             totalPointsScored: 0,
             dartsThrown: 0,
-            legsWon: 0
+            legsWon: 0,
+            legTurnScores: [] // To track turn totals for stats
         });
         renderPlayerList();
         input.value = '';
@@ -70,15 +89,35 @@ function startGame() {
     startScore = parseInt(document.getElementById('gameType').value);
     
     // Initialize scores
-    players.forEach(p => p.score = startScore);
+    players.forEach(p => {
+        p.score = startScore;
+        p.totalPointsScored = 0;
+        p.dartsThrown = 0;
+        p.legTurnScores = [];
+    });
     
-    document.getElementById('setupScreen').classList.remove('active');
-    document.getElementById('gameScreen').classList.add('active');
+    leg = 1;
     showScreen('gameScreen');
     
     turnScores = [];
     gameHistory = [];
-    generateNumberButtons();
+    initGameUI();
+    updateUI();
+}
+
+function initGameUI() {
+    generateNumberButtons(); // Generate number pad
+
+    // Create player cards in the leaderboard
+    dom.leaderboard.innerHTML = players.map(p => `
+        <div class="player-card">
+            <span class="p-name">${p.name}</span>
+            <span class="p-score">${startScore}</span>
+            <span class="p-avg">Avg: 0.00</span>
+        </div>
+    `).join('');
+
+    // Re-run initial UI update to set the first active player
     updateUI();
 }
 
@@ -161,6 +200,7 @@ function submitScore(dartScore) {
             player.score += turnTotal;
             player.totalPointsScored -= turnTotal;
             player.dartsThrown += (3 - turnScores.length); // Penalize with remaining darts
+            player.legTurnScores.push(turnScores.reduce((a, b) => a + b, 0)); // Record turn score for stats
             nextTurn();
             return;
         }
@@ -172,6 +212,7 @@ function submitScore(dartScore) {
         player.score += turnTotal;
         player.totalPointsScored -= turnTotal;
         // Darts thrown still count
+        player.legTurnScores.push(turnScores.reduce((a, b) => a + b, 0)); // Record turn score for stats
         
         // Fill remaining darts thrown for the turn for stat purposes
         player.dartsThrown += (3 - turnScores.length);
@@ -207,6 +248,10 @@ function undoLastDart() {
 
 function nextTurn() {
     // Use a timeout to allow the player to see the result of their last dart
+    // Record the turn score for the current player before switching
+    const player = players[currentPlayerIndex];
+    player.legTurnScores.push(turnScores.reduce((a, b) => a + b, 0));
+
     setTimeout(() => {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
         turnScores = [];
@@ -221,68 +266,129 @@ function getAverage(player) {
 }
 
 function updateUI() {
-    if (players.length === 0 || !document.getElementById('gameScreen').classList.contains('active')) return;
+    if (players.length === 0 || !dom.gameScreen.classList.contains('active')) return;
     const player = players[currentPlayerIndex];
     
     // Main Display
-    document.getElementById('activeName').innerText = player.name;
-    document.getElementById('activeScore').innerText = player.score;
-    document.getElementById('activeAvg').innerText = `Avg: ${getAverage(player)}`;
+    dom.activeName.innerText = player.name;
+    dom.activeScore.innerText = player.score;
+    dom.activeAvg.innerText = `Avg: ${getAverage(player)}`;
+    dom.legDisplay.innerText = `Leg ${leg}`;
     
     // Checkout Hint
     const checkout = getCheckoutGuide(player.score);
-    document.getElementById('checkoutHint').innerText = checkout ? `Checkout: ${checkout}` : "";
+    dom.checkoutHint.innerText = checkout ? `Checkout: ${checkout}` : "";
 
     // Darts thrown display
-    const dartsDisplay = document.getElementById('dartsThrownDisplay');
-    dartsDisplay.innerHTML = [0, 1, 2].map(i => {
-        const score = turnScores[i];
-        const isActive = (i === turnScores.length);
-        return `<span class="dart-score ${isActive ? 'active' : ''}">${score !== undefined ? score : '-'}</span>`;
-    }).join('');
+    dom.dartsThrownSpans.forEach((span, i) => {
+        span.innerText = turnScores[i] !== undefined ? turnScores[i] : '-';
+        span.classList.toggle('active', i === turnScores.length);
+    });
 
     // Update multiplier buttons
-    document.getElementById('modDouble').classList.toggle('active', currentThrow.multiplier === 2);
-    document.getElementById('modTreble').classList.toggle('active', currentThrow.multiplier === 3);
+    dom.modDouble.classList.toggle('active', currentThrow.multiplier === 2);
+    dom.modTreble.classList.toggle('active', currentThrow.multiplier === 3);
     updateInputDisplay();
 
-
     // Leaderboard
-    const leaderboard = document.getElementById('leaderboard');
-    leaderboard.innerHTML = players.map((p, index) => `
-        <div class="player-card ${index === currentPlayerIndex ? 'active' : ''}">
-            <span class="p-name">${p.name}</span>
-            <span class="p-score">${p.score}</span>
-            <span class="p-avg">Avg: ${getAverage(p)}</span>
-        </div>
-    `).join('');
+    const cards = dom.leaderboard.children;
+    players.forEach((p, index) => {
+        const card = cards[index];
+        if (card) {
+            card.children[1].innerText = p.score; // Update score
+            card.children[2].innerText = `Avg: ${getAverage(p)}`; // Update average
+            card.classList.toggle('active', index === currentPlayerIndex);
+        }
+    });
     
     // Scroll active player into view
     const activeCard = document.querySelector('.player-card.active');
-    if(activeCard) activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
 function showWinScreen(player) {
     document.getElementById('winnerText').innerText = `${player.name} Wins!`;
     player.legsWon += 1;
-    document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${getAverage(player)}`;
-    const modal = document.getElementById('winModal');
-    modal.style.display = 'flex';
+    saveGameStats(player.name); // Save stats to server
+    dom.winModal.querySelector('#winnerStats').innerText = `Final 3-Dart Avg: ${getAverage(player)}`;
+    dom.winModal.style.display = 'flex';
     // Override the play again button to reset the leg, not the whole game
-    modal.querySelector('.btn').setAttribute('onclick', 'startNewLeg()');
-    modal.querySelector('.btn').innerText = 'Start Next Leg';
+    dom.winModal.querySelector('.btn').setAttribute('onclick', 'startNewLeg()');
+    dom.winModal.querySelector('.btn').innerText = 'Start Next Leg';
 }
 
 function startNewLeg() {
     // Reset scores, keep players and legs won
-    players.forEach(p => p.score = startScore);
+    players.forEach(p => {
+        p.score = startScore;
+        p.legTurnScores = []; // Clear turn scores for the new leg
+        // Reset stats for the new leg, but keep legsWon
+        p.totalPointsScored = 0;
+        p.dartsThrown = 0;
+    });
+    leg += 1;
     currentPlayerIndex = 0; // Or cycle starting player
     turnScores = [];
     gameHistory = [];
     currentThrow = { base: null, multiplier: 1 };
-    document.getElementById('winModal').style.display = 'none';
+    dom.winModal.style.display = 'none';
+
+    // No need to re-initialize, just update
     updateUI();
 
+}
+
+// --- API Communication ---
+
+async function saveGameStats(winnerName) {
+    if (!allRegisteredPlayers) return; // Don't save if server is offline
+
+    const playerUpdates = players.map(p => {
+        const registeredPlayer = allRegisteredPlayers[p.name] || {};
+        
+        // Update turn score frequency
+        const turnScoreFrequency = registeredPlayer.turnScoreFrequency || {};
+        p.legTurnScores.forEach(score => {
+            turnScoreFrequency[score] = (turnScoreFrequency[score] || 0) + 1;
+        });
+
+        // Update average history
+        const legAverage = getAverage(p);
+        const averageHistory = registeredPlayer.averageHistory || [];
+        if (parseFloat(legAverage) > 0) {
+            averageHistory.push(legAverage);
+        }
+
+        return {
+            name: p.name,
+            gamesPlayed: (registeredPlayer.gamesPlayed || 0) + 1,
+            gamesWon: (registeredPlayer.gamesWon || 0) + (p.name === winnerName ? 1 : 0),
+            totalPointsScored: (registeredPlayer.totalPointsScored || 0) + p.totalPointsScored,
+            totalDartsThrown: (registeredPlayer.totalDartsThrown || 0) + p.dartsThrown,
+            legsWon: (registeredPlayer.legsWon || 0) + (p.name === winnerName ? 1 : 0),
+            turnScoreFrequency: turnScoreFrequency,
+            averageHistory: averageHistory.slice(-10) // Keep only the last 10
+        };
+    });
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/players/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify(playerUpdates)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        console.log("Game stats saved successfully.");
+    } catch (error) {
+        console.error("Failed to save game stats:", error);
+    }
 }
 
 // --- Stats Screen Logic ---
@@ -386,12 +492,45 @@ async function checkServerStatus() {
 }
 
 async function loadRegisteredPlayers() {
-    // This function will be implemented in the next step
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/players`);
+        if (!response.ok) throw new Error('Failed to fetch players');
+        const playersList = await response.json();
+
+        // Convert array to a dictionary indexed by name for easy lookup
+        allRegisteredPlayers = playersList.reduce((acc, player) => {
+            acc[player.name] = player;
+            return acc;
+        }, {});
+
+        console.log("Registered players loaded:", allRegisteredPlayers);
+    } catch (error) {
+        console.error("Could not load registered players:", error);
+        // Ensure the object is empty on failure
+        allRegisteredPlayers = {};
+    }
 }
 
-document.addEventListener('DOMContentLoaded', 
-    const isServerOnline = a
-        // loadRegisteredPlayers(); // We will uncomment this when the server is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    // Cache all DOM elements
+    dom.setupScreen = document.getElementById('setupScreen');
+    dom.gameScreen = document.getElementById('gameScreen');
+    dom.statsScreen = document.getElementById('statsScreen');
+    dom.activeName = document.getElementById('activeName');
+    dom.activeScore = document.getElementById('activeScore');
+    dom.activeAvg = document.getElementById('activeAvg');
+    dom.checkoutHint = document.getElementById('checkoutHint');
+    dom.dartsThrownSpans = Array.from(document.querySelectorAll('#dartsThrownDisplay .dart-score'));
+    dom.leaderboard = document.getElementById('leaderboard');
+    dom.modDouble = document.getElementById('modDouble');
+    dom.modTreble = document.getElementById('modTreble');
+    dom.inputDisplay = document.getElementById('inputDisplay');
+    dom.legDisplay = document.querySelector('header span');
+    dom.winModal = document.getElementById('winModal');
+
+    const isServerOnline = await checkServerStatus();
+    if (isServerOnline) {
+        await loadRegisteredPlayers();
     }
 });
 
