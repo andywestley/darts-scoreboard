@@ -217,19 +217,19 @@ $reportData = run_diagnostics();
                             <td><?php echo htmlspecialchars($test['action']); ?></td>
                             <td><?php echo htmlspecialchars($test['method']); ?></td>
                             <td class="<?php echo $statusClass; ?>"><?php echo htmlspecialchars($statusCode); ?></td>
-                            <td class="api-details-cell">
-                                <div class="api-detail-block">
-                                    <strong>players.json (before)</strong>
+                            <td>
+                                <details>
+                                    <summary>players.json (before)</summary>
                                     <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_before'])); ?></pre>
-                                </div>
-                                <div class="api-detail-block">
-                                    <strong>players.json (after)</strong>
+                                </details>
+                                <details>
+                                    <summary>players.json (after)</summary>
                                     <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_after'])); ?></pre>
-                                </div>
-                                <div class="api-detail-block">
-                                    <strong>API Response Payload</strong>
+                                </details>
+                                <details>
+                                    <summary>API Response Payload</summary>
                                     <pre><?php echo htmlspecialchars($prettyPrintJson($result['response_body'])); ?></pre>
-                                </div>
+                                </details>
                             </td>
                         </tr>
                     <?php endforeach; ?>
