@@ -26,10 +26,6 @@ body.testbed-page th {
     font-weight: 600;
 }
 
-body.testbed-page tbody tr:nth-child(even) {
-    background-color: #fdfdfd;
-}
-
 body.testbed-page .status {
     font-weight: bold;
     color: white;
