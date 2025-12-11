@@ -95,7 +95,7 @@ class Storage
         return $this->dataCache['matches'] ?? [];
     }
 
-    public function saveMatch(object $match): void
+    public function saveMatch(array $match): void
     {
         $matches = $this->getMatches();
         $matches[] = $match;
