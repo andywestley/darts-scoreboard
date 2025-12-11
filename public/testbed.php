@@ -1,74 +1,8 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
 
-$response = '';
-
 // Close the session to prevent deadlocks when cURL calls back to the same server.
 session_write_close();
-
-function make_request($url, $post_data = null) {
-    $ch = curl_init();
-    
-    // Preserve the session across cURL requests
-    $cookies = [];
-    foreach ($_COOKIE as $key => $value) {
-        $cookies[] = "$key=$value";
-    }
-    
-    curl_setopt($ch, CURLOPT_COOKIE, implode(';', $cookies));
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HEADER, 0);
-
-    if ($post_data) {
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
-    }
-
-    $output = curl_exec($ch);
-    curl_close($ch);
-    return $output;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $api_url = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
-    $action = $_POST['action'] ?? '';
-
-    switch ($action) {
-        case 'get_setup_players':
-        case 'get_players':
-        case 'get_matches':
-            $response = make_request($api_url . '?action=' . $action);
-            break;
-        case 'add_player':
-            $response = make_request($api_url, ['action' => 'add_player', 'playerName' => $_POST['playerName']]);
-            break;
-        case 'remove_player':
-            $response = make_request($api_url, ['action' => 'remove_player', 'playerName' => $_POST['playerName']]);
-            break;
-        case 'start_game':
-            // First, add some players to the session for the game to start
-            make_request($api_url, ['action' => 'add_player', 'playerName' => 'Player 1']);
-            make_request($api_url, ['action' => 'add_player', 'playerName' => 'Player 2']);
-            // Then, start the game
-            $response = make_request($api_url, ['action' => 'start_game', 'gameType' => 501, 'matchLegs' => 3]);
-            break;
-        case 'submit_score':
-            $response = make_request($api_url, ['action' => 'submit_score', 'score' => $_POST['score']]);
-            break;
-        case 'undo':
-            $response = make_request($api_url, ['action' => 'undo']);
-            break;
-        case 'get_h2h_stats':
-            $response = make_request($api_url . '?action=get_h2h_stats&player1=' . urlencode($_POST['player1']) . '&player2=' . urlencode($_POST['player2']));
-            break;
-        case 'reset':
-            $response = make_request($api_url . '?action=reset');
-            $response .= "\n\nNOTE: Session destroyed. Response may be a redirect header.";
-            break;
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -81,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .container { max-width: 900px; margin: auto; }
         fieldset { border: 1px solid #444; margin-bottom: 20px; padding: 15px; }
         legend { font-weight: bold; color: #00d1b2; padding: 0 5px; }
-        form { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .api-form { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         button { background-color: #00d1b2; color: #1a1a1a; border: none; padding: 8px 12px; cursor: pointer; }
         input[type="text"], input[type="number"] { padding: 8px; }
         h1, h2 { color: #00d1b2; }
@@ -101,6 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             flex-direction: column;
         }
+        .response-container .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .response-container h2 { margin: 0 0 10px 0; }
         .response-container textarea { flex-grow: 1; width: 100%; background-color: #1a1a1a; color: #f0f0f0; border: 1px solid #444; font-family: monospace; box-sizing: border-box; }
     </style>
@@ -113,18 +52,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <fieldset>
                 <legend>Setup Actions</legend>
-                <form method="POST">
+                <form class="api-form">
                     <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
                 </form>
-                <form method="POST">
+                <form class="api-form">
                     <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
                     <button type="submit" name="action" value="add_player">Add Player</button>
                 </form>
-                <form method="POST">
+                <form class="api-form">
                     <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
                     <button type="submit" name="action" value="remove_player">Remove Player</button>
                 </form>
-                <form method="POST">
+                <form class="api-form">
                     <button type="submit" name="action" value="start_game">Start Game</button>
                     <span class="note">(Adds 'Player 1' & 'Player 2' then starts a 501/3 game)</span>
                 </form>
@@ -133,24 +72,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <fieldset>
                 <legend>Game Actions</legend>
                 <p class="note">A game must be started for these to work.</p>
-                <form method="POST">
+                <form class="api-form">
                     <input type="number" name="score" placeholder="Score" value="100" required>
                     <button type="submit" name="action" value="submit_score">Submit Score</button>
                 </form>
-                <form method="POST">
+                <form class="api-form">
                     <button type="submit" name="action" value="undo">Undo Last Score</button>
                 </form>
             </fieldset>
 
             <fieldset>
                 <legend>Stats Actions</legend>
-                <form method="POST">
+                <form class="api-form">
                     <button type="submit" name="action" value="get_players">Get All Players</button>
                 </form>
-                <form method="POST">
+                <form class="api-form">
                     <button type="submit" name="action" value="get_matches">Get All Matches</button>
                 </form>
-                <form method="POST">
+                <form class="api-form">
                     <input type="text" name="player1" placeholder="Player 1" value="Player 1" required>
                     <input type="text" name="player2" placeholder="Player 2" value="Player 2" required>
                     <button type="submit" name="action" value="get_h2h_stats">Get H2H Stats</button>
@@ -159,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <fieldset>
                 <legend>Session Management</legend>
-                <form method="POST">
+                <form class="api-form">
                     <button type="submit" name="action" value="reset">Reset Session</button>
                 </form>
             </fieldset>
@@ -167,9 +106,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="response-container">
-        <h2>API Response</h2>
-        <textarea readonly><?php echo htmlspecialchars($response); ?></textarea>
+        <div class="title-bar">
+            <h2>API Response</h2>
+            <button id="clearResponseBtn">Clear</button>
+        </div>
+        <textarea id="responseTextArea" readonly></textarea>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const responseTextArea = document.getElementById('responseTextArea');
+            const clearResponseBtn = document.getElementById('clearResponseBtn');
+            const scrollableContent = document.querySelector('.scrollable-content');
+
+            clearResponseBtn.addEventListener('click', () => {
+                responseTextArea.value = '';
+            });
+
+            scrollableContent.addEventListener('submit', async (e) => {
+                if (!e.target.classList.contains('api-form')) {
+                    return;
+                }
+                
+                e.preventDefault();
+                
+                const form = e.target;
+                const submitter = e.submitter;
+                const action = submitter.value;
+
+                responseTextArea.value = `Making request for action: ${action}...`;
+
+                let url = 'index.php';
+                const options = {
+                    method: 'POST',
+                };
+
+                const getActions = ['get_setup_players', 'get_players', 'get_matches', 'reset'];
+                const getWithParamsActions = ['get_h2h_stats'];
+
+                if (getActions.includes(action)) {
+                    options.method = 'GET';
+                    url += `?action=${action}`;
+                } else if (getWithParamsActions.includes(action)) {
+                    options.method = 'GET';
+                    const params = new URLSearchParams(new FormData(form));
+                    url += `?action=${action}&${params.toString()}`;
+                } else {
+                    // POST actions
+                    const formData = new FormData(form);
+                    formData.append('action', action);
+
+                    // Special case for start_game to pre-load players
+                    if (action === 'start_game') {
+                        responseTextArea.value += '\nPre-loading players for start_game test...';
+                        const p1Data = new FormData();
+                        p1Data.append('action', 'add_player');
+                        p1Data.append('playerName', 'Player 1');
+                        await fetch(url, { method: 'POST', body: p1Data });
+
+                        const p2Data = new FormData();
+                        p2Data.append('action', 'add_player');
+                        p2Data.append('playerName', 'Player 2');
+                        await fetch(url, { method: 'POST', body: p2Data });
+                        responseTextArea.value += '\nPlayers loaded. Starting game...';
+                    }
+
+                    options.body = formData;
+                }
+
+                try {
+                    const response = await fetch(url, options);
+                    const rawText = await response.text();
+
+                    // Try to format if it's JSON, otherwise show raw text
+                    try {
+                        const json = JSON.parse(rawText);
+                        responseTextArea.value = JSON.stringify(json, null, 2);
+                    } catch (jsonError) {
+                        responseTextArea.value = rawText;
+                    }
+
+                    if (action === 'reset') {
+                        responseTextArea.value += "\n\nNOTE: Session destroyed. Subsequent requests will be in a new session.";
+                    }
+
+                } catch (error) {
+                    responseTextArea.value = `Network or fetch error:\n${error.toString()}`;
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 ```
