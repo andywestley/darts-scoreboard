@@ -127,3 +127,59 @@ h1 {
     font-size: 0.9em;
     cursor: pointer; /* To indicate the remove action */
 }
+
+/* --- Testbed & Diagnostics Page Styles --- */
+.testbed-page .container {
+    max-width: 1200px;
+    margin: auto;
+}
+
+.testbed-page h2 {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.testbed-page .tabs {
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.testbed-page .tab-link {
+    background: none;
+    border: none;
+    color: var(--text-color-secondary);
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1.1em;
+}
+
+.testbed-page .tab-link.active {
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+    font-weight: bold;
+}
+
+.testbed-page .tab-content {
+    display: none;
+}
+
+.testbed-page .tab-content.active {
+    display: block;
+}
+
+.testbed-page fieldset {
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    padding: 15px;
+}
+
+.testbed-page legend {
+    font-weight: bold;
+    color: var(--accent-color);
+    padding: 0 5px;
+}
+
+.testbed-page .note {
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+}

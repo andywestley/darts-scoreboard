@@ -1,218 +1,198 @@
+<?php
+
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+function run_diagnostics() {
+    $report = [];
+
+    // --- Test 1: File System Permissions ---
+    $dataDir = __DIR__ . '/../data';
+    $testFile = $dataDir . '/permission_test.tmp';
+    $testContent = 'write_test_' . time();
+    $permResults = [];
+
+    $permResults[] = is_dir($dataDir) ? ['PASS', 'Data directory exists.', $dataDir] : ['FAIL', 'Data directory does not exist.', $dataDir];
+    $permResults[] = is_writable($dataDir) ? ['PASS', 'Data directory is writable.'] : ['FAIL', 'Data directory is NOT writable.'];
+
+    if (@file_put_contents($testFile, $testContent) !== false) {
+        $permResults[] = ['PASS', 'Successfully wrote to test file.', $testFile];
+        $readContent = @file_get_contents($testFile);
+        $permResults[] = ($readContent === $testContent) ? ['PASS', 'Successfully read back content.'] : ['FAIL', 'Content read did not match.'];
+        @unlink($testFile);
+    } else {
+        $permResults[] = ['FAIL', 'Failed to write to test file.', $testFile];
+    }
+    $report['permissions'] = $permResults;
+
+    // --- Test 2: API Endpoint Execution ---
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
+    $errorLogPath = '/var/www/vhosts/andrewwestley.co.uk/logs/error_log';
+    $playersDataFile = __DIR__ . '/../data/players.json';
+
+    $apiTests = [
+        ['action' => 'reset', 'method' => 'GET', 'data' => []],
+        ['action' => 'add_player', 'method' => 'POST', 'data' => ['playerName' => 'TestPlayer1']],
+        ['action' => 'get_setup_players', 'method' => 'GET', 'data' => []],
+        ['action' => 'get_players', 'method' => 'GET', 'data' => []],
+    ];
+
+    $apiResults = [];
+    $sessionCookie = 'PHPSESSID=' . session_id();
+
+    foreach ($apiTests as $test) {
+        $testResult = ['test' => $test];
+        $testResult['players_before'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
+        $url = $baseUrl;
+        $postData = null;
+        if ($test['method'] === 'GET') {
+            $url .= '?action=' . $test['action'];
+        } else {
+            $postData = array_merge($test['data'], ['action' => $test['action']]);
+        }
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_COOKIE, $sessionCookie);
+        if ($postData) {
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        }
+        $testResult['response_body'] = curl_exec($ch);
+        $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
+        $testResult['error_log_snippet'] = file_exists($errorLogPath) ? shell_exec('tail -n 20 ' . escapeshellarg($errorLogPath)) : 'Error log not found or accessible.';
+        $apiResults[] = $testResult;
+    }
+    $report['api'] = $apiResults;
+
+    return $report;
+}
+
+$reportData = run_diagnostics();
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>API Testbed</title>
-    <style>
-        :root { --response-height: 220px; }
-        body { font-family: sans-serif; background-color: #2c2c2c; color: #f0f0f0; padding: 20px; padding-bottom: calc(var(--response-height) + 20px); }
-        .container { max-width: 900px; margin: auto; }
-        fieldset { border: 1px solid #444; margin-bottom: 20px; padding: 15px; }
-        legend { font-weight: bold; color: #00d1b2; padding: 0 5px; }
-        form { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        button { background-color: #00d1b2; color: #1a1a1a; border: none; padding: 8px 12px; cursor: pointer; }
-        input[type="text"], input[type="number"] { padding: 8px; }
-        .checkbox-label { display: flex; align-items: center; gap: 5px; }
-        .form-group { display: flex; flex-direction: column; gap: 10px; }
-        .form-row { display: flex; align-items: center; gap: 10px; }
-        h1, h2 { color: #00d1b2; }
-        .note { font-size: 0.9em; color: #aaa; }
-
-        .response-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: var(--response-height);
-            background-color: #1e1e1e;
-            border-top: 2px solid #00d1b2;
-            padding: 10px 20px;
-            box-sizing: border-box;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-        }
-        .response-container .title-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .response-container h2 { margin: 0 0 10px 0; }
-        .response-container textarea { flex-grow: 1; width: 100%; background-color: #1a1a1a; color: #f0f0f0; border: 1px solid #444; font-family: monospace; box-sizing: border-box; }
-    </style>
+    <title>API Testbed &amp; Diagnostics</title>
+    <link rel="stylesheet" href="css/style.css?v=<?php echo time(); ?>">
 </head>
-<body>
+<body class="testbed-page">
     <div class="container">
-        <div class="scrollable-content">
-            <h1>🎯 API Testbed</h1>
-            <p>Use this page to test API actions independently. The raw server response will appear in the pinned window below.</p>
+        <h1>🎯 Darts Scoreboard - Debugging Tools</h1>
 
-            <fieldset>
-                <legend>Setup Actions</legend>
-                <form>
-                    <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
-                </form>
-                <form>
-                    <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
-                    <button type="submit" name="action" value="add_player">Add Player</button>
-                </form>
-                <form>
-                    <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
-                    <button type="submit" name="action" value="remove_player">Remove Player</button>
-                </form>
-                <form>
-                    <button type="submit" name="action" value="start_game">Start Game</button>
-                    <span class="note">(Adds 'Player 1' & 'Player 2' then starts a 501/3 game)</span>
-                </form>
-            </fieldset>
+        <div class="tabs">
+            <button class="tab-link active" data-tab="interactiveTab">Interactive Testbed</button>
+            <button class="tab-link" data-tab="diagnosticsTab">Diagnostics Report</button>
+        </div>
 
-            <fieldset>
-                <legend>Game Actions</legend>
-                <p class="note">A game must be started for these to work.</p>
-                <div class="form-group">
+        <!-- Interactive Testbed Content -->
+        <div id="interactiveTab" class="tab-content active">
+            <div class="scrollable-content">
+                <p>Use this page to test API actions independently. The raw server response will appear in the pinned window below.</p>
+                <fieldset>
+                    <legend>Setup Actions</legend>
                     <form>
-                        <div class="form-row">
-                            <input type="number" name="score" placeholder="Score" value="100" required>
-                            <input type="number" name="dartsThrown" placeholder="Darts" value="3" style="width: 60px;">
-                        </div>
-                        <div class="form-row">
-                            <label class="checkbox-label"><input type="checkbox" name="isBust" value="true"> Is Bust</label>
-                            <label class="checkbox-label"><input type="checkbox" name="isCheckout" value="true"> Is Checkout</label>
-                        </div>
-                        <button type="submit" name="action" value="submit_score">Submit Score</button>
+                        <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
                     </form>
-                    <p class="note">To test `saveMatchStats`, start a game, then submit a score that equals the player's remaining total and check the "Is Checkout" box. Repeat until a player wins the required number of legs.</p>
-                </div>
-                <form>
-                    <button type="submit" name="action" value="undo">Undo Last Score</button>
-                </form>
-                <form>
-                    <button type="submit" name="action" value="start_new_leg">Start Next Leg</button>
-                </form>
-            </fieldset>
+                    <form>
+                        <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
+                        <button type="submit" name="action" value="add_player">Add Player</button>
+                    </form>
+                    <form>
+                        <button type="submit" name="action" value="start_game">Start Game</button>
+                        <span class="note">(Adds 'Player 1' & 'Player 2' then starts a 501/3 game)</span>
+                    </form>
+                </fieldset>
+                <fieldset>
+                    <legend>Game Actions</legend>
+                    <p class="note">A game must be started for these to work.</p>
+                    <div class="form-group">
+                        <form>
+                            <div class="form-row">
+                                <input type="number" name="score" placeholder="Score" value="100" required>
+                                <input type="number" name="dartsThrown" placeholder="Darts" value="3" style="width: 60px;">
+                            </div>
+                            <div class="form-row">
+                                <label class="checkbox-label"><input type="checkbox" name="isBust" value="true"> Is Bust</label>
+                                <label class="checkbox-label"><input type="checkbox" name="isCheckout" value="true"> Is Checkout</label>
+                            </div>
+                            <button type="submit" name="action" value="submit_score">Submit Score</button>
+                        </form>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Session Management</legend>
+                    <form>
+                        <button type="submit" name="action" value="reset">Reset Session</button>
+                    </form>
+                </fieldset>
+            </div>
+        </div>
 
-            <fieldset>
-                <legend>Stats Actions</legend>
-                <form>
-                    <button type="submit" name="action" value="get_players">Get All Players</button>
-                </form>
-                <form>
-                    <button type="submit" name="action" value="get_matches">Get All Matches</button>
-                </form>
-                <form>
-                    <input type="text" name="player1" placeholder="Player 1" value="Player 1" required>
-                    <input type="text" name="player2" placeholder="Player 2" value="Player 2" required>
-                    <button type="submit" name="action" value="get_h2h_stats">Get H2H Stats</button>
-                </form>
-            </fieldset>
-
-            <fieldset>
-                <legend>Session Management</legend>
-                <form>
-                    <button type="submit" name="action" value="reset">Reset Session</button>
-                </form>
-            </fieldset>
+        <!-- Diagnostics Report Content -->
+        <div id="diagnosticsTab" class="tab-content">
+            <div id="report-container">
+                <button id="copyBtn">Copy Full Report to Clipboard</button>
+                <h2>1. File System Permissions Test</h2>
+                <table>
+                    <?php foreach ($reportData['permissions'] as $result): ?>
+                        <tr>
+                            <td class="status status-<?php echo strtolower($result[0]); ?>"><?php echo $result[0]; ?></td>
+                            <td><?php echo htmlspecialchars($result[1]); ?></td>
+                            <td><pre><?php echo htmlspecialchars($result[2] ?? ''); ?></pre></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+                <h2>2. API Endpoint Tests</h2>
+                <table>
+                    <tr><th>Action</th><th>Method</th><th>Status Code</th><th>Details</th></tr>
+                    <?php foreach ($reportData['api'] as $result): ?>
+                        <?php
+                            $test = $result['test'];
+                            $statusCode = $result['status_code'];
+                            $responseBody = $result['response_body'];
+                            $isPass = ($statusCode >= 200 && $statusCode < 300 && !empty(trim($responseBody)));
+                            $statusClass = $isPass ? 'status-pass' : 'status-fail';
+                        ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($test['action']); ?></td>
+                            <td><?php echo htmlspecialchars($test['method']); ?></td>
+                            <td class="<?php echo $statusClass; ?>"><?php echo htmlspecialchars($statusCode); ?></td>
+                            <td>
+                                <details>
+                                    <summary>players.json (before)</summary>
+                                    <pre><?php echo htmlspecialchars($result['players_before']); ?></pre>
+                                </details>
+                                <details>
+                                    <summary>players.json (after)</summary>
+                                    <pre><?php echo htmlspecialchars($result['players_after']); ?></pre>
+                                </details>
+                                <details>
+                                    <summary>Raw API Response Payload</summary>
+                                    <pre><?php echo htmlspecialchars($responseBody); ?></pre>
+                                </details>
+                                <details>
+                                    <summary>Server Error Log Snippet (last 20 lines)</summary>
+                                    <pre><?php echo htmlspecialchars($result['error_log_snippet']); ?></pre>
+                                </details>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="response-container">
-        <div class="response-pane">
-            <div class="title-bar">
-                <h2>Log</h2>
-                <button id="clearLogBtn">Clear</button>
-            </div>
-            <textarea id="logTextArea" readonly></textarea>
-        </div>
-        <div class="response-pane">
-            <div class="title-bar">
-                <h2>API Response</h2>
-                <button id="clearResponseBtn">Clear</button>
-            </div>
-            <textarea id="responseTextArea" readonly></textarea>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const responseTextArea = document.getElementById('responseTextArea');
-            const logTextArea = document.getElementById('logTextArea');
-            const clearResponseBtn = document.getElementById('clearResponseBtn');
-            const clearLogBtn = document.getElementById('clearLogBtn');
-            const scrollableContent = document.querySelector('.scrollable-content');
-
-            clearResponseBtn.addEventListener('click', () => {
-                responseTextArea.value = '';
-            });
-
-            clearLogBtn.addEventListener('click', () => {
-                logTextArea.value = '';
-            });
-
-            scrollableContent.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const form = e.target;
-                const submitter = e.submitter;
-                const action = submitter.value;
-
-                // Clear previous results and log the new action
-                responseTextArea.value = '';
-                logTextArea.value = `Making request for action: ${action}...\n`;
-
-                let url = 'index.php';
-                const options = {
-                    method: 'POST',
-                };
-
-                const getActions = ['get_setup_players', 'get_players', 'get_matches', 'reset'];
-                const getWithParamsActions = ['get_h2h_stats'];
-
-                if (getActions.includes(action)) {
-                    options.method = 'GET';
-                    url += `?action=${action}`;
-                } else if (getWithParamsActions.includes(action)) {
-                    options.method = 'GET';
-                    const params = new URLSearchParams(new FormData(form));
-                    url += `?action=${action}&${params.toString()}`;
-                } else {
-                    // POST actions
-                    const formData = new FormData(form);
-                    formData.append('action', action);
-
-                    // Special case for start_game to pre-load players
-                    if (action === 'start_game') {
-                        logTextArea.value += 'Pre-loading players for start_game test...\n';
-                        const p1Data = new FormData();
-                        p1Data.append('action', 'add_player');
-                        p1Data.append('playerName', 'Player 1');
-                        await fetch(url, { method: 'POST', body: p1Data });
-
-                        const p2Data = new FormData();
-                        p2Data.append('action', 'add_player');
-                        p2Data.append('playerName', 'Player 2');
-                        await fetch(url, { method: 'POST', body: p2Data });
-                        logTextArea.value += 'Players loaded. Starting game...\n';
-                    }
-
-                    options.body = formData;
-                }
-
-                try {
-                    const response = await fetch(url, options);
-                    const rawText = await response.text();
-                    logTextArea.value += `Received response from server (status: ${response.status}).\n`;
-                    
-                    responseTextArea.value = rawText;
-
-                    if (action === 'reset') {
-                        logTextArea.value += "NOTE: Session destroyed. Subsequent requests will be in a new session.\n";
-                    }
-
-                } catch (error) {
-                    logTextArea.value += `Network or fetch error:\n${error.toString()}`;
-                }
-            });
-        });
-    </script>
+    <script src="js/testbed.js" defer></script>
 </body>
 </html>
