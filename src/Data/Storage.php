@@ -61,7 +61,10 @@ class Storage
     {
         $dataDir = dirname($filePath);
         if (!is_dir($dataDir)) {
-            mkdir($dataDir, 0777, true);
+            // Explicitly check for writability and throw a clear exception on failure.
+            if (!@mkdir($dataDir, 0777, true) && !is_dir($dataDir)) {
+                throw new Exception("Failed to create data directory: {$dataDir}. Please check server permissions.");
+            }
         }
         $initialData = [
             'version' => self::CODE_VERSION,
