@@ -1,5 +1,10 @@
 <?php
-// Start or resume a session to store game state between requests.
+// Temporarily display all PHP errors to diagnose the "blank screen" issue.
+// IMPORTANT: Remove these lines once the problem is solved.
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 
 // --- VIEW RENDERING LOGIC ---
