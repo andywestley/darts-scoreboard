@@ -15,7 +15,9 @@ class App
     public function __construct()
     {
         // Define a constant for the project root path.
-        define('ROOT_PATH', dirname(__DIR__));
+        if (!defined('ROOT_PATH')) {
+            define('ROOT_PATH', dirname(__DIR__));
+        }
 
         $this->initialize();
     }
