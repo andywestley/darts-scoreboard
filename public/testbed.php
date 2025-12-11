@@ -32,7 +32,7 @@ function run_diagnostics() {
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
-    $errorLogPath = '/var/www/vhosts/andrewwestley.co.uk/logs/error_log';
+    $errorLogPath = ini_get('error_log');
     $playersDataFile = __DIR__ . '/../data/players.json';
 
     $apiTests = [

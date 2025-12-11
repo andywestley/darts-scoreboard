@@ -105,8 +105,11 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <!-- Game Screen -->
     <div id="gameScreen" class="screen <?php if ($current_screen === 'game') echo 'active'; ?>" data-rendered="false">
         <!-- This is now a skeleton. JS will render all content inside. -->
-        <header> 
-            <a href="index.php?action=reset" class="reset-link">← New Game</a>
+        <header>
+            <form action="index.php" method="post" style="display: inline;">
+                <input type="hidden" name="action" value="reset">
+                <button type="submit" class="reset-link-button">← New Game</button>
+            </form>
             <span id="legDisplay"></span>
         </header>
 
@@ -178,7 +181,10 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <h2>Match Over!</h2>
             <h3 id="matchWinnerName"></h3>
             <div id="matchSummaryTableContainer"></div>
-            <a href="index.php?action=reset" class="btn btn-match-action">Start New Match</a>
+            <form action="index.php" method="post">
+                <input type="hidden" name="action" value="reset">
+                <button type="submit" class="btn btn-match-action">Start New Match</button>
+            </form>
         </div>
     </div>
 
