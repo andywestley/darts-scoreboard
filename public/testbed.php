@@ -64,19 +64,19 @@ function run_diagnostics() {
     $playersDataFile = __DIR__ . '/../data/players.json';
 
     $apiTests = [
-        ['action' => 'reset', 'method' => 'GET', 'data' => []],
-        ['action' => 'add_player', 'method' => 'POST', 'data' => ['playerName' => 'Player A']],
-        ['action' => 'add_player', 'method' => 'POST', 'data' => ['playerName' => 'Player B']],
-        ['action' => 'start_game', 'method' => 'POST', 'data' => ['gameType' => '501', 'matchLegs' => '3']],
+        ['action' => 'session:reset', 'method' => 'POST', 'data' => []],
+        ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player A']],
+        ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player B']],
+        ['action' => 'game:start', 'method' => 'POST', 'data' => ['gameType' => '501', 'matchLegs' => '3']],
         // Simulate a round of play
-        ['action' => 'submit_score', 'method' => 'POST', 'data' => ['score' => 100, 'dartsThrown' => 3]], // Player A's turn
-        ['action' => 'submit_score', 'method' => 'POST', 'data' => ['score' => 60, 'dartsThrown' => 3]],  // Player B's turn
+        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 100, 'dartsThrown' => 3]], // Player A's turn
+        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 60, 'dartsThrown' => 3]],  // Player B's turn
         // Simulate a bust score for Player A
-        ['action' => 'submit_score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player A's turn (Score: 401 -> 221)
-        ['action' => 'submit_score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player B's turn (Score: 441 -> 261)
-        ['action' => 'submit_score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player A attempts 180 on 221 -> BUST!
+        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player A's turn (Score: 401 -> 221)
+        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player B's turn (Score: 441 -> 261)
+        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player A attempts 180 on 221 -> BUST!
         // This final test verifies the game state was updated correctly after the bust.
-        ['action' => 'get_game_state', 'method' => 'GET', 'data' => []],
+        ['action' => 'game:state', 'method' => 'POST', 'data' => []],
     ];
 
     $apiResults = [];
