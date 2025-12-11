@@ -36,6 +36,7 @@ class App
             'get_setup_players' => [$setupController, 'getSetupPlayers'],
             'remove_player'     => [$setupController, 'removePlayer'],
             'start_game'        => [$setupController, 'startGame'],
+            'reset'             => [$setupController, 'reset'], // Handle session reset
             'submit_score'      => [$gameController, 'submitScore'],
             'start_new_leg'     => [$gameController, 'startNewLeg'],
             'undo'              => [$gameController, 'undo'],
