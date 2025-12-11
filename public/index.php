@@ -38,7 +38,13 @@ if ($action) {
     $output = ob_get_clean(); // Get the buffer content and clean the buffer
 
     if (empty($output) && json_last_error() === JSON_ERROR_NONE) {
-        $output = json_encode(['success' => false, 'error' => "API action '{$action}' did not return any output."]);
+        // If no output was generated, it's very likely the action was not found in the App's router.
+        // We can return a 404 here, as the requested *resource (the action)* was not found.
+        http_response_code(404);
+        $output = json_encode([
+            'success' => false, 
+            'error' => "Action '{$action}' not found."
+        ]);
     }
     echo $output;
     exit; // Stop execution after handling the API request.
