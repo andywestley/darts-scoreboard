@@ -36,8 +36,16 @@ body.testbed-page .status {
     min-width: 50px;
 }
 
-body.testbed-page .api-details-cell {
-    background-color: #fcfcfc;
+/* Specific status colors for PASS/FAIL badges and cells */
+body.testbed-page .status-pass {
+    background-color: #28a745; /* Green */
+    color: #fff !important;
+}
+
+body.testbed-page .status-fail {
+    background-color: #dc3545; /* Red */
+    color: #fff !important;
+    font-weight: 700; /* Bolder */
 }
 
 body.testbed-page .api-detail-block {
