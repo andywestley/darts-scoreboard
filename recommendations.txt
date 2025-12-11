@@ -1,0 +1,12 @@
+Sound File Recommendations:
+
+click.mp3: A short, crisp sound of a dart hitting the board.
+   - Source: freesound.org
+
+bust.mp3: A buzzer or "wah-wah" sound to indicate a bust.
+   - Source: freesound.org
+
+180.mp3: An enthusiastic crowd cheer or announcer saying "One Hundred and Eighty!".
+   - Source: self-recorded or from professional darts events.
+
+win.mp3: A triumphant fanfare or victory sound.
