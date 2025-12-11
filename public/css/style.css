@@ -208,6 +208,14 @@ a {
     color: var(--text-color-secondary);
 }
 
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 5px;
+}
+
 .active-player-display {
     text-align: center;
     margin-bottom: 20px;
