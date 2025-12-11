@@ -31,6 +31,11 @@ class SetupController
         $players[] = $playerName;
         $_SESSION['setup_players'] = $players;
 
+        // Also ensure the player exists in persistent storage for future stat tracking.
+        if ($this->storage->getPlayerByName($playerName) === null) {
+            $this->storage->addPlayer($playerName);
+        }
+
         $this->jsonResponse(['success' => true, 'players' => $players]);
     }
 

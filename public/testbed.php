@@ -12,6 +12,9 @@
         form { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         button { background-color: #00d1b2; color: #1a1a1a; border: none; padding: 8px 12px; cursor: pointer; }
         input[type="text"], input[type="number"] { padding: 8px; }
+        .checkbox-label { display: flex; align-items: center; gap: 5px; }
+        .form-group { display: flex; flex-direction: column; gap: 10px; }
+        .form-row { display: flex; align-items: center; gap: 10px; }
         h1, h2 { color: #00d1b2; }
         .note { font-size: 0.9em; color: #aaa; }
 
@@ -66,12 +69,25 @@
             <fieldset>
                 <legend>Game Actions</legend>
                 <p class="note">A game must be started for these to work.</p>
-                <form>
-                    <input type="number" name="score" placeholder="Score" value="100" required>
-                    <button type="submit" name="action" value="submit_score">Submit Score</button>
-                </form>
+                <div class="form-group">
+                    <form>
+                        <div class="form-row">
+                            <input type="number" name="score" placeholder="Score" value="100" required>
+                            <input type="number" name="dartsThrown" placeholder="Darts" value="3" style="width: 60px;">
+                        </div>
+                        <div class="form-row">
+                            <label class="checkbox-label"><input type="checkbox" name="isBust" value="true"> Is Bust</label>
+                            <label class="checkbox-label"><input type="checkbox" name="isCheckout" value="true"> Is Checkout</label>
+                        </div>
+                        <button type="submit" name="action" value="submit_score">Submit Score</button>
+                    </form>
+                    <p class="note">To test `saveMatchStats`, start a game, then submit a score that equals the player's remaining total and check the "Is Checkout" box. Repeat until a player wins the required number of legs.</p>
+                </div>
                 <form>
                     <button type="submit" name="action" value="undo">Undo Last Score</button>
+                </form>
+                <form>
+                    <button type="submit" name="action" value="start_new_leg">Start Next Leg</button>
                 </form>
             </fieldset>
 
