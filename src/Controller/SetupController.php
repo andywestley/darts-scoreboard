@@ -93,6 +93,24 @@ class SetupController
         $this->jsonResponse(['success' => true, 'redirect' => '/']);
     }
 
+    public function reset(): void
+    {
+        // Clear the session completely
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        session_destroy();
+
+        // For an API context, we should return a success message, not redirect.
+        // The client-side JS can then handle the page reload.
+        $this->jsonResponse(['success' => true, 'message' => 'Session has been reset.']);
+    }
+
     private function jsonResponse(array $data): void
     {
         header('Content-Type: application/json');
