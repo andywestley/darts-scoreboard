@@ -521,3 +521,52 @@ a {
     border-radius: 8px;
     margin-top: 20px;
 }
+
+/* --- Head-to-Head (H2H) Stats --- */
+.h2h-stats {
+    text-align: center;
+    padding: 20px;
+}
+
+.h2h-stats__title {
+    font-size: 1.5em;
+    font-weight: 300;
+    color: var(--text-color);
+    margin-bottom: 30px;
+}
+
+.h2h-stats__record {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 20px;
+}
+
+.h2h-stats__player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.h2h-stats__wins {
+    font-size: 4em;
+    font-weight: bold;
+    color: var(--highlight-color);
+}
+
+.h2h-stats__name {
+    font-size: 1.2em;
+    color: var(--text-color-secondary);
+}
+
+.h2h-stats__vs {
+    font-size: 2em;
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+.h2h-stats__total {
+    margin-top: 30px;
+    color: var(--text-color-secondary);
+    font-style: italic;
+}

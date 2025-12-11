@@ -341,6 +341,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    let selectedH2HPlayers = [];
+
     // --- Stats & History Screens ---
     async function loadStatsScreen() {
         const res = await fetch('../api.php?action=get_players'); 
@@ -354,15 +356,44 @@ document.addEventListener('DOMContentLoaded', function() {
         players.forEach(p => {
             const li = document.createElement('li');
             li.innerText = p.name;
-            li.onclick = () => displayPlayerStats(p.name, players);
+            li.dataset.playerName = p.name;
+            li.onclick = () => handlePlayerStatSelection(p.name, players);
             ul.appendChild(li);
         });
+        // Reset selection when loading the screen
+        selectedH2HPlayers = [];
+        updateStatsDisplay(players);
     }
 
-    async function displayPlayerStats(playerName, allPlayers) {
+    function handlePlayerStatSelection(playerName, allPlayers) {
+        const index = selectedH2HPlayers.indexOf(playerName);
+        if (index > -1) {
+            selectedH2HPlayers.splice(index, 1); // Deselect
+        } else {
+            if (selectedH2HPlayers.length < 2) {
+                selectedH2HPlayers.push(playerName); // Select
+            }
+        }
+        updateStatsDisplay(allPlayers);
+    }
+
+    function updateStatsDisplay(allPlayers) {
+        // Update visual selection
         document.querySelectorAll('#registeredPlayersUl li').forEach(li => {
-            li.classList.toggle('player-stats-list__item--active', li.innerText === playerName);
+            li.classList.toggle('player-stats-list__item--active', selectedH2HPlayers.includes(li.dataset.playerName));
         });
+
+        if (selectedH2HPlayers.length === 2) {
+            displayH2HStats(selectedH2HPlayers[0], selectedH2HPlayers[1]);
+        } else if (selectedH2HPlayers.length === 1) {
+            displayPlayerStats(selectedH2HPlayers[0], allPlayers);
+        } else {
+            const detailsContainer = document.getElementById('playerStatsDetails');
+            detailsContainer.innerHTML = `<p class="player-stats-details__message">Select one player for individual stats, or two for a head-to-head comparison.</p>`;
+        }
+    }
+
+    function displayPlayerStats(playerName, allPlayers) {
         const detailsContainer = document.getElementById('playerStatsDetails');
         const player = allPlayers.find(p => p.name === playerName);
 
@@ -393,6 +424,37 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         drawAverageHistoryChart(player);
+    }
+
+    async function displayH2HStats(player1Name, player2Name) {
+        const detailsContainer = document.getElementById('playerStatsDetails');
+        detailsContainer.innerHTML = `<p class="player-stats-details__message">Loading Head-to-Head stats...</p>`;
+
+        const res = await fetch(`../api.php?action=get_h2h_stats&player1=${encodeURIComponent(player1Name)}&player2=${encodeURIComponent(player2Name)}`);
+        const result = await res.json();
+
+        if (result.success) {
+            const h2h = result.data;
+            detailsContainer.innerHTML = `
+                <div class="h2h-stats">
+                    <h2 class="h2h-stats__title">${player1Name} vs ${player2Name}</h2>
+                    <div class="h2h-stats__record">
+                        <div class="h2h-stats__player">
+                            <span class="h2h-stats__wins">${h2h.player1_wins}</span>
+                            <span class="h2h-stats__name">${player1Name}</span>
+                        </div>
+                        <div class="h2h-stats__vs">vs</div>
+                        <div class="h2h-stats__player">
+                            <span class="h2h-stats__wins">${h2h.player2_wins}</span>
+                            <span class="h2h-stats__name">${player2Name}</span>
+                        </div>
+                    </div>
+                    <p class="h2h-stats__total">Total Matches: ${h2h.total_matches}</p>
+                </div>
+            `;
+        } else {
+            detailsContainer.innerHTML = `<p class="player-stats-details__message">Could not load Head-to-Head stats.</p>`;
+        }
     }
 
     function drawAverageHistoryChart(player) {

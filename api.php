@@ -24,8 +24,11 @@ if ($action === 'reset') {
 
 header('Content-Type: application/json');
 
+// Define a constant for the project root path.
+define('ROOT_PATH', __DIR__);
+
 // Dependency Injection Container (simple version)
-$storage = new Storage();
+$storage = new Storage(ROOT_PATH);
 $setupController = new SetupController();
 $gameController = new GameController($storage);
 $statsController = new StatsController($storage);
@@ -41,6 +44,7 @@ $routes = [
     'undo'              => [$gameController, 'undo'],
     'get_players'       => [$statsController, 'getPlayers'],
     'get_matches'       => [$statsController, 'getMatches'],
+    'get_h2h_stats'     => [$statsController, 'getH2HStats'],
 ];
 
 if (isset($routes[$action])) {
