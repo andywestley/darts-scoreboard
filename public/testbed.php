@@ -28,7 +28,8 @@ function make_request($url, $post_data = null) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $api_url = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/../api.php';
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $api_url = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/../api.php';
     $action = $_POST['action'] ?? '';
 
     switch ($action) {
