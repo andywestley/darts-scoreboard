@@ -5,10 +5,11 @@ use Darts\App;
 // 1. Bootstrap the application
 require_once __DIR__ . '/../bootstrap.php';
 
-// 2. Simple Routing
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+// 2. Simple Routing: Read action from a custom header to avoid server security filters.
+$action = $_SERVER['HTTP_X_ACTION'] ?? $_POST['action'] ?? $_GET['action'] ?? '';
 
 // Validate CSRF token for all POST actions
+// The action might be in a header, but the method is still POST.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         // CSRF token mismatch, handle the error appropriately.

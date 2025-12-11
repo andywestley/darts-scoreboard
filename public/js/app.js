@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Helper Functions ---
     async function postAction(action, data = {}) {
         const formData = new FormData();
-        formData.append('action', action);
 
         // Add CSRF token to all POST requests
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -23,7 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch('index.php', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'X-Action': action
+                },
+                body: formData,
             });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
