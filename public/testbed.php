@@ -94,15 +94,24 @@ function run_diagnostics() {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_HEADER, 1); // We want to capture response headers
         curl_setopt($ch, CURLOPT_COOKIE, $sessionCookie);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
         $test['method'] = 'POST'; // Reflect the actual method used
         $testResult['test'] = $test; // Re-assign the modified test array to the result
 
-        $testResult['response_body'] = curl_exec($ch);
+        $rawResponse = curl_exec($ch);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+
+        $testResult['request_url'] = $url;
+        $testResult['post_data_sent'] = $postData;
+        $testResult['response_headers'] = substr($rawResponse, 0, $headerSize);
+        $testResult['response_body'] = substr($rawResponse, $headerSize);
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $testResult['curl_error_num'] = curl_errno($ch);
+        $testResult['curl_error_msg'] = curl_error($ch);
+
         curl_close($ch);
         $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
         $apiResults[] = $testResult;

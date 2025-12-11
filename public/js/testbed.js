@@ -98,14 +98,78 @@ document.addEventListener('DOMContentLoaded', () => {
     clearLogBtn.addEventListener('click', () => logTextArea.value = '');
     clearResponseBtn.addEventListener('click', () => responseTextArea.value = '');
 
-    if (copyReportBtn) {
-        copyReportBtn.addEventListener('click', () => {
-            const reportContainer = document.getElementById('report-container');
-            navigator.clipboard.writeText(reportContainer.innerText).then(() => {
-                const originalText = copyReportBtn.innerText;
-                copyReportBtn.innerText = 'Copied!';
-                setTimeout(() => copyReportBtn.innerText = originalText, 2000);
+    // --- Markdown Report Generation ---
+    const setupMarkdownReportGenerator = () => {
+        if (!copyReportBtn) return;
+
+        const generateMarkdownReport = (reportData) => {
+            let md = '## 🎯 Darts Scoreboard - Diagnostics Report\n\n';
+
+            // Section 0: Environment
+            md += '### 0. PHP Environment\n';
+            md += '| Status | Check |\n|---|---|\n';
+            reportData.environment.forEach(result => {
+                md += `| ${result[0]} | ${result[1]} |\n`;
             });
+            md += '\n';
+
+            // Section 1: Permissions
+            md += '### 1. File System Permissions\n';
+            md += '| Status | Check | Path |\n|---|---|---|\n';
+            reportData.permissions.forEach(result => {
+                md += `| ${result[0]} | ${result[1]} | \`${result[2] || ''}\` |\n`;
+            });
+            md += '\n';
+
+            // Section 2: API Tests
+            md += '### 2. API Endpoint Tests\n';
+            reportData.api.forEach((result, index) => {
+                const { test, status_code, players_before, players_after, response_body, request_url, post_data_sent, response_headers, curl_error_num, curl_error_msg } = result;
+                const isPass = status_code >= 200 && status_code < 300;
+                md += `\n---\n\n**Test ${index + 1}: \`${test.action}\`** (${test.method})\n\n`;
+                md += `- **Status:** ${isPass ? 'PASS' : 'FAIL'} (\`HTTP Code: ${status_code}\`)\n`;
+                if (curl_error_num > 0) {
+                    md += `- **cURL Error:** \`${curl_error_msg}\` (Code: ${curl_error_num})\n`;
+                }
+                md += '\n';
+
+                md += '#### Request Details\n';
+                md += '```\n' + `URL: ${request_url}` + '\n```\n';
+                md += '```json\n// POST Data Sent\n' + JSON.stringify(post_data_sent, null, 2) + '\n```\n\n';
+
+                md += '#### Response Details\n';
+                md += '```http\n// Response Headers\n' + (response_headers.trim() || '(No headers received)') + '\n```\n';
+                md += '```json\n// Response Body\n' + (response_body.trim() || '{}') + '\n```\n\n';
+
+                md += '#### State Changes\n';
+                md += '```json\n// players.json (before)\n' + (players_before.trim() || '{}') + '\n```\n';
+                md += '```json\n// players.json (after)\n' + (players_after.trim() || '{}') + '\n```\n';
+            });
+
+            return md;
+        };
+
+        copyReportBtn.addEventListener('click', () => {
+            const reportJsonElement = document.getElementById('report-data-json');
+            if (!reportJsonElement) {
+                log('Error: Could not find report data element.');
+                return;
+            }
+
+            try {
+                const reportData = JSON.parse(reportJsonElement.textContent);
+                const markdownReport = generateMarkdownReport(reportData);
+                navigator.clipboard.writeText(markdownReport).then(() => {
+                    const originalText = copyReportBtn.innerText;
+                    copyReportBtn.innerText = 'Copied!';
+                    setTimeout(() => copyReportBtn.innerText = originalText, 2000);
+                });
+            } catch (e) {
+                log(`Error generating report: ${e.message}`);
+                console.error("Report Generation Error:", e);
+            }
         });
-    }
+    };
+
+    setupMarkdownReportGenerator();
 });
