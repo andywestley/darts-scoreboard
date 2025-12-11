@@ -32,6 +32,12 @@ def save_player_data(data):
 
 # --- API ENDPOINTS ---
 
+@app.route('/api/ping', methods=['GET'])
+def ping():
+    """A simple health check endpoint to see if the server is running."""
+    return jsonify({"status": "ok"})
+
+
 @app.route('/api/players', methods=['GET'])
 def get_players():
     """

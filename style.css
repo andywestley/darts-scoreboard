@@ -151,3 +151,84 @@ header { display: flex; justify-content: space-between; align-items: center; pad
     .input-display { max-width: 400px; margin: 0 auto 1rem auto; }
     .leaderboard { justify-content: center; }
 }
+
+/* --- Stats Screen --- */
+.stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-top: 1rem;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.player-stats-list, .player-stats-details {
+    background: var(--card-bg);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.player-stats-list h2, .player-stats-details h2 {
+    color: var(--accent-color);
+    font-size: 1.3rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.player-stats-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.player-stats-list li {
+    padding: 0.7rem 0.5rem;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.player-stats-list li:last-child { border-bottom: none; }
+.player-stats-list li:hover { background-color: #3a3a3a; }
+.player-stats-list li.active-stat-player {
+    background-color: var(--accent-color);
+    color: black;
+    font-weight: bold;
+}
+
+.player-stats-details p { margin: 0.5rem 0; line-height: 1.6; }
+.player-stats-details strong { color: var(--stat-color); }
+.player-stats-details ul { list-style: inside; padding-left: 1rem; }
+
+@media (min-width: 768px) {
+    .stats-container { flex-direction: row; }
+    .player-stats-list { flex: 1; max-width: 300px; }
+    .player-stats-details { flex: 2; }
+}
+
+/* Server Status Indicator */
+.server-status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1.5rem;
+    color: var(--secondary-text);
+    font-size: 0.9rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #888; /* Default/checking color */
+    margin-right: 8px;
+    transition: background-color 0.3s ease;
+}
+
+.server-status-indicator.online .status-dot { background-color: var(--accent-color); }
+.server-status-indicator.online .status-text { color: var(--text-color); }
+
+.server-status-indicator.offline .status-dot { background-color: var(--danger-color); }
+.server-status-indicator.offline .status-text { color: var(--danger-color); }

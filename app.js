@@ -358,13 +358,41 @@ function displayPlayerStats(playerName) {
 }
 
 // --- Initialization ---
+
+async function checkServerStatus() {
+    const statusIndicator = document.getElementById('serverStatus');
+    const statusText = statusIndicator.querySelector('.status-text');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/ping`);
+        if (!response.ok) throw new Error('Server not responding');
+
+        const data = await response.json();
+        if (data.status === 'ok') {
+            statusIndicator.classList.remove('offline');
+            statusIndicator.classList.add('online');
+            statusText.innerText = 'Server Connected';
+            return true;
+        }
+    } catch (error) {
+        console.error("Server check failed:", error);
+        statusIndicator.classList.remove('online');
+        statusIndicator.classList.add('offline');
+        statusText.innerText = 'Server Offline';
+        // Disable stats button if server is offline
+        document.querySelector("button[onclick=\"showScreen('statsScreen')\"]").disabled = true;
+        return false;
+    }
+}
+
 async function loadRegisteredPlayers() {
     // This function will be implemented in the next step
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    generateNumberButtons();
-    // loadRegisteredPlayers(); // We will uncomment this when the server is ready
+document.addEventListener('DOMContentLoaded', 
+    const isServerOnline = a
+        // loadRegisteredPlayers(); // We will uncomment this when the server is ready
+    }
 });
 
 
