@@ -1,14 +1,15 @@
 <?php
 
-// Temporarily display all PHP errors to diagnose any underlying issues.
+// 1. Error Reporting (for development)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Manually include the core application logic and class files.
-require_once __DIR__ . '/api.php';
+// 2. Bootstrap Application
+session_start();
 
-// Now that the environment is set up, render the main HTML view.
+// 3. Render View
+// The view file will handle displaying the correct screen based on session state.
 require_once __DIR__ . '/public/index.php';
 
 ?>
