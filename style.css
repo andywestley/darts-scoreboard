@@ -82,19 +82,55 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 
 /* Keypad */
 .controls { margin-top: auto; }
+
+.darts-thrown-display {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+.dart-score {
+    background: #000;
+    color: var(--secondary-text);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    min-width: 50px;
+    text-align: center;
+}
+.dart-score.active {
+    border: 2px solid var(--accent-color);
+    color: var(--accent-color);
+}
+
 .input-display {
     background: #000; color: var(--accent-color); text-align: center;
     font-size: 2rem; padding: 0.5rem; border-radius: 8px; margin-bottom: 1rem;
     min-height: 3.5rem; display: flex; align-items: center; justify-content: center;
 }
 
-.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.dartboard-keypad { display: flex; flex-direction: column; gap: 10px; }
+.modifiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.numbers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.specials { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
 .key {
     background: var(--card-bg); color: white; padding: 1rem; border-radius: 6px;
     font-size: 1.5rem; border: none; cursor: pointer;
 }
 .key:active { background: #555; }
-.key-enter { background: var(--accent-color); color: black; grid-column: span 3; }
+
+.key-mod { background: #444; }
+.key-mod.active {
+    background: var(--accent-color);
+    color: #000;
+    transform: scale(1.05);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+.key-special { font-size: 1rem; }
+.key-bull { background: var(--danger-color); font-size: 1rem; }
+
 .key-del { background: var(--danger-color); }
 
 /* Modal */
@@ -108,7 +144,10 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .winner-stats { color: var(--stat-color); font-size: 1.5rem; margin-bottom: 2rem; }
 
 @media (min-width: 768px) {
-    .keypad { grid-template-columns: repeat(3, 1fr); max-width: 400px; margin: 0 auto; }
+    .dartboard-keypad { max-width: 500px; margin: 0 auto; }
+    .modifiers { grid-template-columns: repeat(4, 1fr); }
+    .numbers { grid-template-columns: repeat(5, 1fr); }
+    .specials { grid-template-columns: repeat(2, 1fr); }
     .input-display { max-width: 400px; margin: 0 auto 1rem auto; }
     .leaderboard { justify-content: center; }
 }

@@ -2,7 +2,12 @@
 let players = [];
 let currentPlayerIndex = 0;
 let startScore = 501;
-let currentInput = "";
+let turnScores = []; // Holds scores for the 3 darts in a turn
+let currentThrow = { // Holds state for the current dart being entered
+    base: null,
+    multiplier: 1, // 1 for single, 2 for double, 3 for treble
+};
+let gameHistory = []; // To store state for the undo feature
 
 // --- Setup Logic ---
 function addPlayer() {
@@ -15,7 +20,8 @@ function addPlayer() {
             score: 0, 
             id: Date.now(),
             totalPointsScored: 0,
-            dartsThrown: 0
+            dartsThrown: 0,
+            legsWon: 0
         });
         renderPlayerList();
         input.value = '';
@@ -55,74 +61,139 @@ function startGame() {
     document.getElementById('setupScreen').classList.remove('active');
     document.getElementById('gameScreen').classList.add('active');
     
+    turnScores = [];
+    gameHistory = [];
+    generateNumberButtons();
     updateUI();
 }
 
 // --- Game Logic ---
 
-function pressKey(num) {
-    if (currentInput.length < 3) { 
-        currentInput += num;
-        updateInputDisplay();
+function generateNumberButtons() {
+    const container = document.querySelector('.numbers');
+    container.innerHTML = '';
+    for (let i = 1; i <= 20; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'key';
+        btn.innerText = i;
+        btn.onclick = () => selectNumber(i);
+        container.appendChild(btn);
     }
 }
 
-function deleteChar() {
-    currentInput = currentInput.slice(0, -1);
-    updateInputDisplay();
+function selectMultiplier(multiplier) {
+    // Toggle off if the same multiplier is clicked again
+    if (currentThrow.multiplier === multiplier) {
+        currentThrow.multiplier = 1;
+    } else {
+        currentThrow.multiplier = multiplier;
+    }
+    updateUI();
 }
 
-function clearInput() {
-    currentInput = "";
-    updateInputDisplay();
+function selectNumber(number) {
+    currentThrow.base = number;
+    const score = currentThrow.base * currentThrow.multiplier;
+    submitScore(score);
+}
+
+function enterSpecial(score) {
+    submitScore(score);
 }
 
 function updateInputDisplay() {
     const display = document.getElementById('inputDisplay');
-    display.innerText = currentInput === "" ? "0" : currentInput;
+    const score = currentThrow.base ? (currentThrow.base * currentThrow.multiplier) : 0;
+    display.innerText = score;
 }
 
-function submitScore() {
-    const scoreThrown = parseInt(currentInput) || 0;
+function submitScore(dartScore) {
+    // Save current state for undo
+    gameHistory.push(JSON.parse(JSON.stringify({ players, currentPlayerIndex, turnScores })));
+
     const player = players[currentPlayerIndex];
 
-    if (scoreThrown > 180) {
-        alert("Maximum score for 3 darts is 180.");
-        clearInput();
+    // Basic validation
+    if (dartScore > 180) { // Should not happen with new UI, but good practice
+        alert("Invalid score.");
         return;
     }
 
-    const newScore = player.score - scoreThrown;
+    turnScores.push(dartScore);
+    player.dartsThrown += 1;
+    player.totalPointsScored += dartScore;
+    player.score -= dartScore;
 
-    if (newScore === 0) {
-        // WIN
-        player.score = 0;
-        // Update stats one last time (assuming 3 darts used for the out)
-        player.totalPointsScored += scoreThrown;
-        player.dartsThrown += 3;
-        showWinScreen(player);
-        return;
-    } else if (newScore < 0 || newScore === 1) {
-        // BUST
+    // --- Check for Win or Bust ---
+    if (player.score === 0) {
+        // A score of 0 is only a win if the last dart was a double or a bullseye.
+        const isDoubleOut = (currentThrow.multiplier === 2) || (dartScore === 50);
+
+        if (isDoubleOut) {
+            // VALID WIN!
+            updateUI(); // Update to show the final dart
+            setTimeout(() => showWinScreen(player), 200); // Short delay to see the final score
+            return;
+        } else {
+            // BUST! Invalid checkout (not a double).
+            alert("BUST! You must finish on a double.");
+            // Revert score and stats for the turn
+            const turnTotal = turnScores.reduce((a, b) => a + b, 0);
+            player.score += turnTotal;
+            player.totalPointsScored -= turnTotal;
+            player.dartsThrown += (3 - turnScores.length); // Penalize with remaining darts
+            nextTurn();
+            return;
+        }
+    } else if (player.score < 0 || player.score === 1) {
+        // BUST!
         alert("BUST!");
-        // In a bust, darts are still thrown, but 0 points are accredited to the 'score remaining'
-        // However, for pure average calculation, standard rules usually count the throws but 0 score.
-        // We will count the 3 darts thrown, but 0 points gained towards average.
-        player.dartsThrown += 3;
-    } else {
-        // Valid Throw
-        player.score = newScore;
-        player.totalPointsScored += scoreThrown;
-        player.dartsThrown += 3; // Assuming 3 darts thrown per turn
-    }
+        // Revert score and stats for the turn
+        const turnTotal = turnScores.reduce((a, b) => a + b, 0);
+        player.score += turnTotal;
+        player.totalPointsScored -= turnTotal;
+        // Darts thrown still count
+        
+        // Fill remaining darts thrown for the turn for stat purposes
+        player.dartsThrown += (3 - turnScores.length);
 
-    clearInput();
-    nextTurn();
+        nextTurn();
+        return;
+    }
+    
+    // Reset for next dart
+    currentThrow = { base: null, multiplier: 1 };
+    updateUI();
+
+    // If 3 darts are thrown, move to next player
+    if (turnScores.length === 3) {
+        nextTurn();
+    }
 }
 
-function nextTurn() {
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+function undoLastDart() {
+    if (gameHistory.length === 0) return;
+
+    const lastState = gameHistory.pop();
+    players = lastState.players;
+    currentPlayerIndex = lastState.currentPlayerIndex;
+    turnScores = lastState.turnScores;
+
+    // Reset current throw state
+    currentThrow = { base: null, multiplier: 1 };
+
     updateUI();
+}
+
+
+function nextTurn() {
+    // Use a timeout to allow the player to see the result of their last dart
+    setTimeout(() => {
+        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+        turnScores = [];
+        currentThrow = { base: null, multiplier: 1 };
+        updateUI();
+    }, 800);
 }
 
 function getAverage(player) {
@@ -142,6 +213,20 @@ function updateUI() {
     const checkout = getCheckoutGuide(player.score);
     document.getElementById('checkoutHint').innerText = checkout ? `Checkout: ${checkout}` : "";
 
+    // Darts thrown display
+    const dartsDisplay = document.getElementById('dartsThrownDisplay');
+    dartsDisplay.innerHTML = [0, 1, 2].map(i => {
+        const score = turnScores[i];
+        const isActive = (i === turnScores.length);
+        return `<span class="dart-score ${isActive ? 'active' : ''}">${score !== undefined ? score : '-'}</span>`;
+    }).join('');
+
+    // Update multiplier buttons
+    document.getElementById('modDouble').classList.toggle('active', currentThrow.multiplier === 2);
+    document.getElementById('modTreble').classList.toggle('active', currentThrow.multiplier === 3);
+    updateInputDisplay();
+
+
     // Leaderboard
     const leaderboard = document.getElementById('leaderboard');
     leaderboard.innerHTML = players.map((p, index) => `
@@ -159,8 +244,25 @@ function updateUI() {
 
 function showWinScreen(player) {
     document.getElementById('winnerText').innerText = `${player.name} Wins!`;
+    player.legsWon += 1;
     document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${getAverage(player)}`;
-    document.getElementById('winModal').style.display = 'flex';
+    const modal = document.getElementById('winModal');
+    modal.style.display = 'flex';
+    // Override the play again button to reset the leg, not the whole game
+    modal.querySelector('.btn').setAttribute('onclick', 'startNewLeg()');
+    modal.querySelector('.btn').innerText = 'Start Next Leg';
+}
+
+function startNewLeg() {
+    // Reset scores, keep players and legs won
+    players.forEach(p => p.score = startScore);
+    currentPlayerIndex = 0; // Or cycle starting player
+    turnScores = [];
+    gameHistory = [];
+    currentThrow = { base: null, multiplier: 1 };
+    document.getElementById('winModal').style.display = 'none';
+    updateUI();
+
 }
 
 // --- Checkout Logic (Standard Checkouts) ---
