@@ -73,9 +73,9 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
 
             <div class="input-group">
                 <label>Add Players</label>
-                <div style="display: flex; gap: 10px;">
+                <div class="player-input-controls">
                     <input type="text" id="newPlayerName" placeholder="Enter name...">
-                    <button class="btn btn-secondary" id="addPlayerBtn" style="width: auto; margin: 0;">+</button>
+                    <button class="btn btn-secondary btn-add-player" id="addPlayerBtn">+</button>
                 </div>
             </div>
 
@@ -93,9 +93,9 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <!-- Game Screen -->
     <div id="gameScreen" class="screen <?php if ($current_screen === 'game') echo 'active'; ?>" data-rendered="false">
         <!-- This is now a skeleton. JS will render all content inside. -->
-        <header>
-            <a href="api.php?action=reset" class="reset-link">← New Game</a> 
-            <span id="legDisplay" style="color: #666"></span>
+        <header> 
+            <a href="api.php?action=reset" class="reset-link">← New Game</a>
+            <span id="legDisplay"></span>
         </header>
 
         <div class="active-player-display">
@@ -119,8 +119,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
                     <button class="key key-special" data-score="0">MISS</button>
                     <button class="key key-special key-del" id="undoBtn">UNDO</button>
                 </div>
-                <div class="numbers"></div>
-                <div class="specials">
+                <div class="numbers" id="keypadNumbers"></div>
+                <div class="specials" id="keypadSpecials">
                     <button class="key key-bull" data-score="25">OUTER BULL</button>
                     <button class="key key-bull" data-score="50">BULLSEYE</button>
                 </div>
@@ -132,14 +132,14 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <div id="statsScreen" class="screen">
         <header>
             <a href="#" onclick="showScreen('setupScreen')" class="reset-link">← Back to Setup</a>
-            <span style="color: var(--accent-color); font-weight: bold;">Player Statistics</span>
+            <span class="header-title">Player Statistics</span>
         </header>
         <div class="stats-container">
             <div class="player-stats-list">
                 <h2>Registered Players</h2>
                 <ul id="registeredPlayersUl"></ul>
             </div>
-            <div class="player-stats-details" id="playerStatsDetails">
+            <div id="playerStatsDetails">
                 <h2>Select a Player</h2>
                 <p>Click on a player from the list to see their detailed stats.</p>
                 <div id="avgChartContainer"></div>
@@ -152,7 +152,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <div id="matchHistoryScreen" class="screen">
         <header>
             <a href="#" onclick="showScreen('setupScreen')" class="reset-link">← Back to Setup</a>
-            <span style="color: var(--accent-color); font-weight: bold;">Match History</span>
+            <span class="header-title">Match History</span>
         </header>
         <div class="match-history-container" id="matchHistoryContainer">
             <p>Loading match history...</p>
@@ -166,16 +166,16 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <h2>Match Over!</h2>
             <h3 id="matchWinnerName"></h3>
             <div id="matchSummaryTableContainer"></div>
-            <a href="api.php?action=reset" class="btn" style="max-width: 250px; text-decoration: none;">Start New Match</a> 
+            <a href="api.php?action=reset" class="btn btn-match-action">Start New Match</a> 
         </div>
     </div>
 
     <!-- Win Modal (for leg wins) -->
     <div id="winModal" class="modal">
         <h2 id="winnerText">WINNER!</h2>
-        <div class="confetti">Game Shot!</div>
+        <div class="confetti" id="winnerConfetti">Game Shot!</div>
         <div class="winner-stats" id="winnerStats"></div>
-        <button class="btn" id="nextLegBtn" style="max-width: 200px;">Start Next Leg</button>
+        <button class="btn btn-modal-action" id="nextLegBtn">Start Next Leg</button>
     </div>
 
     <!-- Audio Elements -->
