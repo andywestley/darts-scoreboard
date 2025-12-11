@@ -17,12 +17,6 @@ class App
         // Define a constant for the project root path.
         define('ROOT_PATH', dirname(__DIR__));
 
-        // Manually include class files instead of using Composer's autoloader.
-        require_once ROOT_PATH . '/src/Data/Storage.php';
-        require_once ROOT_PATH . '/src/Controller/SetupController.php';
-        require_once ROOT_PATH . '/src/Controller/GameController.php';
-        require_once ROOT_PATH . '/src/Controller/StatsController.php';
-
         $this->initialize();
     }
 
