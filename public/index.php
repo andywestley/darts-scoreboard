@@ -8,6 +8,16 @@ require_once __DIR__ . '/../bootstrap.php';
 // 2. Simple Routing
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// Validate CSRF token for all POST actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        // CSRF token mismatch, handle the error appropriately.
+        // For simplicity, we can just exit or show an error.
+        http_response_code(403);
+        die('CSRF token validation failed.');
+    }
+}
+
 // If the request is for an API action, run the API and exit.
 if ($action) {
     // The App class handles all API logic.
@@ -38,14 +48,15 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Darts Scorer (PHP Edition)</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script> 
-    <link rel="stylesheet" href="css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime('css/style.css'); ?>">
 </head>
 <body>
     <!-- A hidden script tag to pass the initial PHP state to our JavaScript file -->
-    <script id="initial-state-data" type="application/json"><?php echo $initial_state_json; ?></script>
+    <script id="initial-state-data" type="application/json"><?php echo htmlspecialchars($initial_state_json, ENT_QUOTES | ENT_SUBSTITUTE); ?></script>
     <!-- Setup Screen -->
     <div id="setupScreen" class="screen <?php if ($current_screen === 'setup') echo 'active'; ?>">
         <div class="setup-container">
@@ -108,6 +119,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
         <header>
             <form action="index.php" method="post" style="display: inline;">
                 <input type="hidden" name="action" value="reset">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <button type="submit" class="reset-link-button">← New Game</button>
             </form>
             <span id="legDisplay"></span>
@@ -183,6 +195,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <div id="matchSummaryTableContainer"></div>
             <form action="index.php" method="post">
                 <input type="hidden" name="action" value="reset">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <button type="submit" class="btn btn-match-action">Start New Match</button>
             </form>
         </div>

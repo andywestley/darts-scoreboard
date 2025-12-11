@@ -11,6 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
     async function postAction(action, data = {}) {
         const formData = new FormData();
         formData.append('action', action);
+
+        // Add CSRF token to all POST requests
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        formData.append('csrf_token', csrfToken);
+
         for (const key in data) {
             formData.append(key, data[key]);
         }

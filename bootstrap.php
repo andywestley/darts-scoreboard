@@ -37,7 +37,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 2. Manually include all class files.
+// 2. Generate a CSRF token to prevent cross-site request forgery.
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// 3. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.
 require_once __DIR__ . '/src/Data/Storage.php'; // Dependency
 require_once __DIR__ . '/src/Controller/SetupController.php'; // Dependency

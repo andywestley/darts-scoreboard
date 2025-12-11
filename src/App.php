@@ -49,8 +49,26 @@ class App
     {
         $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+        // CSRF check for POST requests
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'CSRF token mismatch']);
+                return;
+            }
+        }
+
         if (isset($this->routes[$action])) {
-            $this->routes[$action]();
+            $route = $this->routes[$action];
+            if (is_callable($route)) {
+                // Unpack the controller and method for clarity
+                [$controller, $method] = $route;
+                // Call the controller method
+                $controller->$method();
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Invalid route configuration']);
+            }
         } else {
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'Action not found']);
