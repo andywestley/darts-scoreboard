@@ -86,15 +86,13 @@ function run_diagnostics() {
         $testResult = ['test' => $test];
         $testResult['players_before'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
         $url = $baseUrl;
-        $postData = null;
-        if ($test['method'] === 'GET') {
-            $url .= '?action=' . $test['action'];
-        } else {
-            $postData = array_merge($test['data'], [
-                'action' => $test['action'],
-                'csrf_token' => $csrfToken
-            ]);
-        }
+
+        // Force all API calls to be POST to avoid server-side URL rewriting issues with GET params.
+        $postData = array_merge($test['data'], [
+            'action' => $test['action'],
+            'csrf_token' => $csrfToken
+        ]);
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -103,6 +101,7 @@ function run_diagnostics() {
         if ($postData) {
             curl_setopt($ch, CURLOPT_POST, 1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+            $test['method'] = 'POST'; // Reflect the actual method used
         }
         $testResult['response_body'] = curl_exec($ch);
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
