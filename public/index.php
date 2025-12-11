@@ -1,4 +1,22 @@
 <?php
+
+use Darts\App;
+
+// 1. Bootstrap the application
+require_once __DIR__ . '/../bootstrap.php';
+
+// 2. Simple Routing
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// If the request is for an API action, run the API and exit.
+if ($action) {
+    // The App class handles all API logic.
+    $app = new App();
+    $app->run();
+    exit; // Stop execution after handling the API request.
+}
+
+// If there's no action, proceed with rendering the HTML view.
 // --- VIEW RENDERING LOGIC ---
 
 // Determine which screen to display based on the session state.
@@ -88,6 +106,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <div id="gameScreen" class="screen <?php if ($current_screen === 'game') echo 'active'; ?>" data-rendered="false">
         <!-- This is now a skeleton. JS will render all content inside. -->
         <header> 
+        <header>
             <a href="api.php?action=reset" class="reset-link">← New Game</a>
             <span id="legDisplay"></span>
         </header>
@@ -161,6 +180,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <h3 id="matchWinnerName"></h3>
             <div id="matchSummaryTableContainer"></div>
             <a href="api.php?action=reset" class="btn btn-match-action">Start New Match</a> 
+            <a href="api.php?action=reset" class="btn btn-match-action">Start New Match</a>
         </div>
     </div>
 

@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const response = await fetch('../api.php', {
+            const response = await fetch('index.php', {
                 method: 'POST',
                 body: formData
             });
@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const detailsContainer = document.getElementById('playerStatsDetails');
         detailsContainer.innerHTML = `<p class="player-stats-details__message">Loading Head-to-Head stats...</p>`;
 
-        const res = await fetch(`../api.php?action=get_h2h_stats&player1=${encodeURIComponent(player1Name)}&player2=${encodeURIComponent(player2Name)}`);
+        const res = await fetch(`index.php?action=get_h2h_stats&player1=${encodeURIComponent(player1Name)}&player2=${encodeURIComponent(player2Name)}`);
         const result = await res.json();
 
         if (result.success) {
@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadMatchHistory() {
         const container = document.getElementById('matchHistoryContainer');
         container.innerHTML = '<p>Loading match history...</p>';
-        const res = await fetch('../api.php?action=get_matches'); 
+        const res = await fetch('index.php?action=get_matches'); 
         const matches = await res.json();
         if (matches.length === 0) {
             container.innerHTML = '<p>No completed matches found.</p>';
