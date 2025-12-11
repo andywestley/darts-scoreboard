@@ -6,6 +6,27 @@ error_reporting(E_ALL);
 function run_diagnostics() {
     $report = [];
 
+    // --- Test 0: PHP Environment ---
+    $envResults = [];
+    $requiredPhpVersion = '7.4'; // A sensible modern requirement.
+    $currentPhpVersion = PHP_VERSION;
+
+    if (version_compare($currentPhpVersion, $requiredPhpVersion, '>=')) {
+        $envResults[] = ['PASS', "PHP version is {$currentPhpVersion}, which meets the requirement (>= {$requiredPhpVersion})."];
+    } else {
+        $envResults[] = ['FAIL', "PHP version is {$currentPhpVersion}, which is below the minimum requirement of {$requiredPhpVersion}."];
+    }
+
+    $requiredExtensions = ['json', 'session', 'curl'];
+    foreach ($requiredExtensions as $ext) {
+        if (extension_loaded($ext)) {
+            $envResults[] = ['PASS', "Required extension '{$ext}' is loaded."];
+        } else {
+            $envResults[] = ['FAIL', "Required extension '{$ext}' is NOT loaded."];
+        }
+    }
+    $report['environment'] = $envResults;
+
     // --- Test 1: File System Permissions ---
     $dataDir = __DIR__ . '/../data';
     $testFile = $dataDir . '/permission_test.tmp';
@@ -94,6 +115,7 @@ $reportData = run_diagnostics();
     <meta charset="UTF-8">
     <title>API Testbed &amp; Diagnostics</title>
     <link rel="stylesheet" href="css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="css/testbed.css?v=<?php echo time(); ?>">
 </head>
 <body class="testbed-page">
     <div class="container">
@@ -152,6 +174,16 @@ $reportData = run_diagnostics();
         <div id="diagnosticsTab" class="tab-content">
             <div id="report-container">
                 <button id="copyBtn">Copy Full Report to Clipboard</button>
+                <h2>0. PHP Environment</h2>
+                <table>
+                    <?php foreach ($reportData['environment'] as $result): ?>
+                        <tr>
+                            <td class="status status-<?php echo strtolower($result[0]); ?>"><?php echo $result[0]; ?></td>
+                            <td><?php echo htmlspecialchars($result[1]); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+
                 <h2>1. File System Permissions Test</h2>
                 <table>
                     <?php foreach ($reportData['permissions'] as $result): ?>

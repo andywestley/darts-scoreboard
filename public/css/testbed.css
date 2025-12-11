@@ -1,0 +1,52 @@
+/* --- Testbed-Specific Styles for Diagnostics Report --- */
+body.testbed-page h2 {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-top: 2rem;
+}
+
+body.testbed-page table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    font-size: 14px;
+}
+
+body.testbed-page th,
+body.testbed-page td {
+    padding: 12px 15px;
+    text-align: left;
+    border: 1px solid #e9e9e9;
+    vertical-align: top;
+}
+
+body.testbed-page th {
+    background-color: #f7f7f7;
+    font-weight: 600;
+}
+
+body.testbed-page tbody tr:nth-child(even) {
+    background-color: #fdfdfd;
+}
+
+body.testbed-page .status {
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: inline-block;
+    min-width: 50px;
+}
+
+body.testbed-page .api-details-cell {
+    background-color: #fcfcfc;
+}
+
+body.testbed-page .api-detail-block {
+    margin-bottom: 15px;
+}
+body.testbed-page .api-detail-block:last-child {
+    margin-bottom: 0;
+}
