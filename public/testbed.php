@@ -64,7 +64,19 @@ function run_diagnostics() {
         $jwtToken = $authData['token'];
     } else {
         // If we can't get a token, we can't run the tests. Add a failure message.
-        $report['api'] = [['test' => ['action' => 'auth:getToken', 'method' => 'POST'], 'status_code' => 500, 'response_body' => 'Failed to retrieve a valid JWT to run tests. Response: ' . $authResponse]];
+        // Create a full, structured error report to prevent JS errors.
+        $report['api'] = [[
+            'test' => ['action' => 'auth:getToken', 'method' => 'POST'],
+            'status_code' => curl_getinfo($authCh, CURLINFO_HTTP_CODE) ?: 500,
+            'response_body' => 'Failed to retrieve a valid JWT to run tests. Response: ' . $authResponse,
+            'players_before' => 'N/A',
+            'players_after' => 'N/A',
+            'request_url' => $baseUrl,
+            'post_data_sent' => [],
+            'response_headers' => '', // Ensure this property exists
+            'curl_error_num' => curl_errno($authCh),
+            'curl_error_msg' => curl_error($authCh),
+        ]];
         return $report;
     }
 

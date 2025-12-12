@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 md += '```json\n// Other POST Data Sent\n' + JSON.stringify(otherPostData, null, 2) + '\n```\n\n';
 
                 md += '#### Response Details\n';
-                md += '```http\n// Response Headers\n' + (response_headers.trim() || '(No headers received)') + '\n```\n';
+                md += '```http\n// Response Headers\n' + ((response_headers || '').trim() || '(No headers received)') + '\n```\n';
                 const responseJson = JSON.parse(response_body.trim() || '{}');
                 if (responseJson.match) {
                     md += '```json\n// Match State (Output)\n' + JSON.stringify(responseJson.match, null, 2) + '\n```\n';
