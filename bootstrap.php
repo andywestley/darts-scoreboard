@@ -50,6 +50,7 @@ require_once __DIR__ . '/src/lib/php-jwt/Key.php';
 // 3. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.
 require_once __DIR__ . '/src/Data/Storage.php'; // Dependency
+require_once __DIR__ . '/src/Service/GameService.php';
 require_once __DIR__ . '/src/Controller/SetupController.php'; // Dependency
 require_once __DIR__ . '/src/Controller/GameController.php'; // Dependency
 require_once __DIR__ . '/src/Controller/StatsController.php'; // Dependency
