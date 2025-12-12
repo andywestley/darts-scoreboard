@@ -46,46 +46,33 @@ function run_diagnostics() {
     }
     $report['permissions'] = $permResults;
 
-    // --- Preliminary Step: Reset the session to ensure a clean test run ---
+    // --- Test 2: API Endpoint Execution ---
+    // With a stateless JWT architecture, we first need to fetch a token.
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
-    
-    // Start a session just to get a valid cookie and initial CSRF to perform the reset
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $initialCsrf = $_SESSION['csrf_token'] ?? null;
-    $initialCookie = 'PHPSESSID=' . session_id();
-    session_write_close();
 
-    $resetCh = curl_init($baseUrl);
-    curl_setopt($resetCh, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($resetCh, CURLOPT_HEADER, 0);
-    curl_setopt($resetCh, CURLOPT_COOKIE, $initialCookie);
-    curl_setopt($resetCh, CURLOPT_HTTPHEADER, ['X-Action: session:reset']);
-    curl_setopt($resetCh, CURLOPT_POST, 1);
-    curl_setopt($resetCh, CURLOPT_POSTFIELDS, http_build_query(['csrf_token' => $initialCsrf]));
-    curl_exec($resetCh);
-    curl_close($resetCh);
-    // The session is now destroyed on the server side.
-    // We must now start a completely new session to get the new cookie and CSRF token.
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $newSessionId = session_id();
+    $jwtToken = null;
+    $authCh = curl_init($baseUrl);
+    curl_setopt($authCh, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($authCh, CURLOPT_HTTPHEADER, ['X-Action: auth:getToken']);
+    curl_setopt($authCh, CURLOPT_POST, 1); // Send as POST even with no body
+    $authResponse = curl_exec($authCh);
+    curl_close($authCh);
 
-    // --- Test 2: API Endpoint Execution ---
-    // We need the CSRF token for POST requests.
-    // We must start the session to get it, then close it before making cURL requests.
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    $authData = json_decode($authResponse, true);
+    if (isset($authData['success']) && $authData['success'] && isset($authData['token'])) {
+        $jwtToken = $authData['token'];
+    } else {
+        // If we can't get a token, we can't run the tests. Add a failure message.
+        $report['api'] = [['test' => ['action' => 'auth:getToken', 'method' => 'POST'], 'status_code' => 500, 'response_body' => 'Failed to retrieve a valid JWT to run tests. Response: ' . $authResponse]];
+        return $report;
     }
-    $csrfToken = $_SESSION['csrf_token'] ?? null;
-    session_write_close();
 
     $playersDataFile = __DIR__ . '/../data/players.json';
 
     $apiTests = [
+        // Start with a reset to ensure a clean slate for the subsequent tests.
+        ['action' => 'session:reset', 'method' => 'POST', 'data' => []],
         ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player A']],
         ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player B']],
         ['action' => 'game:start', 'method' => 'POST', 'data' => ['gameType' => '501', 'matchLegs' => '3']],
@@ -101,7 +88,6 @@ function run_diagnostics() {
     ];
 
     $apiResults = [];
-    $sessionCookie = 'PHPSESSID=' . $newSessionId;
 
     // This will hold the latest game state as we move through the tests.
     $currentMatchState = null;
@@ -112,7 +98,10 @@ function run_diagnostics() {
         $url = $baseUrl;
         // Move action to a header to avoid mod_security filters.
         $actionHeader = 'X-Action: ' . $test['action'];
-        $postData = array_merge($test['data'], ['csrf_token' => $csrfToken]);
+        $authHeader = 'Authorization: Bearer ' . $jwtToken;
+
+        // POST data no longer needs a CSRF token.
+        $postData = $test['data'];
 
         // If we have a match state, add it to the request.
         if ($currentMatchState !== null) {
@@ -123,8 +112,7 @@ function run_diagnostics() {
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_HEADER, 1); // We want to capture response headers
-        curl_setopt($ch, CURLOPT_COOKIE, $sessionCookie);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [$actionHeader]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [$actionHeader, $authHeader]);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
         $test['method'] = 'POST'; // Reflect the actual method used
@@ -141,15 +129,6 @@ function run_diagnostics() {
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $testResult['curl_error_num'] = curl_errno($ch);
         $testResult['curl_error_msg'] = curl_error($ch);
-
-        // Capture the state of the session file for this specific session ID
-        $sessionFilePath = session_save_path() . '/sess_' . $newSessionId;
-        if (file_exists($sessionFilePath)) {
-            // This gives us a raw look at the session data on the server's disk
-            $testResult['session_data_raw'] = file_get_contents($sessionFilePath);
-        } else {
-            $testResult['session_data_raw'] = 'Session file not found.';
-        }
 
         // IMPORTANT: Update the current match state for the next iteration.
         $responseJson = json_decode($responseBody, true);

@@ -32,15 +32,14 @@ register_shutdown_function(function () {
     }
 });
 
-// 1. Start the session for all requests.
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// 2. Generate a CSRF token to prevent cross-site request forgery.
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
+// JWT Library - Manually included instead of using Composer
+require_once __DIR__ . '/src/lib/php-jwt/Exception.php';
+require_once __DIR__ . '/src/lib/php-jwt/ExpiredException.php';
+require_once __DIR__ . '/src/lib/php-jwt/SignatureInvalidException.php';
+require_once __DIR__ . '/src/lib/php-jwt/BeforeValidException.php';
+require_once __DIR__ . '/src/lib/php-jwt/JWK.php';
+require_once __DIR__ . '/src/lib/php-jwt/JWT.php';
+require_once __DIR__ . '/src/lib/php-jwt/Key.php';
 
 // 3. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.

@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Section 2: API Tests
             md += '### 2. API Endpoint Tests\n';
             reportData.api.forEach((result, index) => {
-                const { test, status_code, players_before, players_after, response_body, request_url, post_data_sent, response_headers, curl_error_num, curl_error_msg, session_data_raw } = result;
+                const { test, status_code, players_before, players_after, response_body, request_url, post_data_sent, response_headers, curl_error_num, curl_error_msg } = result;
                 const isPass = status_code >= 200 && status_code < 300;
                 md += `\n---\n\n**Test ${index + 1}: \`${test.action}\`** (${test.method})\n\n`;
                 md += `- **Status:** ${isPass ? 'PASS' : 'FAIL'} (\`HTTP Code: ${status_code}\`)\n`;
@@ -151,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 md += '```json\n// Full Response Body\n' + JSON.stringify(responseJson, null, 2) + '\n```\n\n';
 
-                md += '#### Server & File State\n';
-                md += '```\n// Raw Session File Content\n' + (session_data_raw || '(Not available)') + '\n```\n';
                 md += '#### State Changes\n';
                 md += '```json\n// players.json (before)\n' + (players_before.trim() || '{}') + '\n```\n';
                 md += '```json\n// players.json (after)\n' + (players_after.trim() || '{}') + '\n```\n';

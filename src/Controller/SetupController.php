@@ -14,6 +14,24 @@ class SetupController
         $this->storage = $storage;
     }
 
+    public function getAnonymousToken(): void
+    {
+        $secretKey = 'your-super-secret-key'; // This must match the key in index.php
+        $payload = [
+            'iss' => $_SERVER['HTTP_HOST'], // Issuer
+            'aud' => $_SERVER['HTTP_HOST'], // Audience
+            'iat' => time(), // Issued at
+            'exp' => time() + (60 * 60 * 24) // Expiration time (24 hours)
+        ];
+
+        $jwt = \Firebase\JWT\JWT::encode($payload, $secretKey, 'HS256');
+
+        $this->jsonResponse([
+            'success' => true,
+            'token' => $jwt
+        ]);
+    }
+
     public function addPlayer(): void
     {
         $playerName = trim($_POST['playerName'] ?? '');

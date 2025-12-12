@@ -5,22 +5,28 @@ use Darts\App;
 // 1. Bootstrap the application
 require_once __DIR__ . '/../bootstrap.php';
 
-// 2. Simple Routing: Read action from a custom header to avoid server security filters.
+// Use JWT classes, which are loaded manually in bootstrap.php
+use \Firebase\JWT\JWT;
+use \Firebase\JWT\Key;
+
+// 2. Simple Routing
 $action = $_SERVER['HTTP_X_ACTION'] ?? $_POST['action'] ?? $_GET['action'] ?? '';
 
-// Validate CSRF token for all POST actions
-// The action might be in a header, but the method is still POST.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
-    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        // CSRF token mismatch, handle the error appropriately.
-        // For simplicity, we can just exit or show an error.
-        http_response_code(403); // Forbidden
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false,
-            'error' => 'CSRF token validation failed.'
-        ]);
-        exit;
+// 3. JWT Validation (replaces CSRF check)
+if ($action && $action !== 'auth:getToken') { // Every action except getting a token requires validation
+    if (!preg_match('/Bearer\s(\S+)/', $_SERVER['HTTP_AUTHORIZATION'] ?? '', $matches)) {
+        http_response_code(401);
+        die(json_encode(['success' => false, 'error' => 'Authorization token not found.']));
+    }
+
+    $jwt = $matches[1];
+    $secretKey = 'your-super-secret-key'; // This should be stored securely
+
+    try {
+        JWT::decode($jwt, new Key($secretKey, 'HS256'));
+    } catch (Exception $e) {
+        http_response_code(401);
+        die(json_encode(['success' => false, 'error' => 'Invalid token: ' . $e->getMessage()]));
     }
 }
 

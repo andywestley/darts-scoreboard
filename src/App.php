@@ -32,6 +32,7 @@ class App
 
         // Simple Router
         $this->routes = [
+            'auth:getToken'     => [$setupController, 'getAnonymousToken'],
             'player:add'        => [$setupController, 'addPlayer'],
             'player:remove'     => [$setupController, 'removePlayer'],
             'player:get_all'    => [$statsController, 'getPlayers'], // For stats screen

@@ -1,19 +1,41 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // --- Globals & Initial State ---
     const initialStateElement = document.getElementById('initial-state-data');
     const initialMatchState = initialStateElement ? JSON.parse(initialStateElement.textContent || 'null') : null;
 
+    let jwtToken = null;
     let currentThrow = { base: null, multiplier: 1 };
     let soundSettings = { useSoundEffects: true };
     let previousMatchState = null; // To detect leg wins
+
+    // --- JWT Management ---
+    async function initializeAuth() {
+        jwtToken = localStorage.getItem('darts_jwt');
+        if (!jwtToken) {
+            // If we don't have a token, get one from the server.
+            try {
+                const response = await fetch('index.php', {
+                    method: 'POST',
+                    headers: { 'X-Action': 'auth:getToken' }
+                });
+                const data = await response.json();
+                if (data.success && data.token) {
+                    jwtToken = data.token;
+                    localStorage.setItem('darts_jwt', jwtToken);
+                }
+            } catch (e) {
+                console.error("Could not fetch auth token.", e);
+                alert("Authentication failed. Please refresh.");
+            }
+        }
+    }
 
     // --- Helper Functions ---
     async function postAction(action, data = {}) {
         const formData = new FormData();
 
-        // Add CSRF token to all POST requests
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        formData.append('csrf_token', csrfToken);
+        // The JWT is now our authorization mechanism, replacing the CSRF token.
+        if (!jwtToken) throw new Error("Authentication token is missing.");
 
         for (const key in data) {
             formData.append(key, data[key]);
@@ -23,7 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('index.php', {
                 method: 'POST',
                 headers: {
-                    'X-Action': action
+                    'X-Action': action,
+                    'Authorization': `Bearer ${jwtToken}`
                 },
                 body: formData,
             });
@@ -37,6 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return { success: false };
         }
     }
+
+    await initializeAuth(); // Ensure we have a token before doing anything else.
 
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -69,9 +94,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerListDiv = document.getElementById('playerList');
     const startGameBtn = document.getElementById('startGameBtn');
 
-    async function renderSetupPlayers() {
-        const response = await postAction('get_setup_players'); // Need to implement this action
-        // For now, we'll just use the JS-side list until we fetch it
+    // Fetches and renders the list of players in the current setup session.
+    async function refreshSetupPlayers() {
+        const res = await postAction('player:get_setup'); // This action needs to be created
+        if (res.success) {
+            updatePlayerList(res.players);
+        }
     }
 
     async function handleAddPlayer() {
@@ -87,10 +115,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePlayerList(players) {
-        playerListDiv.innerHTML = players.map(p => `
+        playerListDiv.innerHTML = players.map(playerName => `
             <div class="player-tag">
-                <span class="player-tag__name">${p.name}</span>
-                <span class="player-tag__remove-btn" data-id="${p.id}">×</span>
+                <span class="player-tag__name">${playerName}</span>
+                <span class="player-tag__remove-btn" data-name="${playerName}">×</span>
             </div>
         `).join('');
     }
@@ -103,8 +131,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         playerListDiv.addEventListener('click', async (e) => {
             if (e.target.classList.contains('player-tag__remove-btn')) {
-                const id = e.target.dataset.id;
-                const res = await postAction('player:remove', { id });
+                const name = e.target.dataset.name;
+                const res = await postAction('player:remove', { playerName: name });
                 if (res.success) updatePlayerList(res.players);
             }
         });
@@ -119,6 +147,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // A page reload is appropriate here as we are transitioning from setup to the game screen.
             if (res.success) window.location.reload();
         });
+
+        // Initial load of players in setup
+        refreshSetupPlayers();
     }
 
     // --- Game Screen Logic ---
@@ -151,27 +182,27 @@ document.addEventListener('DOMContentLoaded', function() {
         function updateGameUI(match) {
             if (!match || !match.players) return;
     
-            const leg = match.currentLeg;
-            const player = match.players[leg.currentPlayerIndex];
+            const player = match.players[match.currentPlayerIndex];
     
             // Update Header
             const matchScore = match.players.map(p => `${p.name.split(' ')[0]} (${p.legsWon})`).join(' - ');
-            document.getElementById('legDisplay').innerText = `Leg ${leg.number} | ${matchScore}`;
+            document.getElementById('legDisplay').innerText = `Leg ${match.currentLeg} | ${matchScore}`;
     
             // Update Active Player Display
             document.getElementById('activeName').innerText = player.name;
             document.getElementById('activeScore').innerText = player.score;
-            const legAvg = player.dartsThrown > 0 ? (player.totalPointsScored / player.dartsThrown * 3).toFixed(2) : '0.00';
+            const totalPointsScored = (match.gameType - player.score);
+            const legAvg = player.dartsThrown > 0 ? (totalPointsScored / player.dartsThrown * 3).toFixed(2) : '0.00';
             document.getElementById('activeAvg').innerText = `Avg: ${legAvg}`;
 
             // Update Checkout Hint
-            if (match.settings.useCheckoutAssistant) {
+            if (match.checkoutAssistant) { // Assuming this is part of the match state
                 document.getElementById('checkoutHint').innerText = getCheckoutGuide(player.score) || "";
             } 
 
             // Update Darts Thrown Display
             const dartsDisplay = document.getElementById('dartsThrownDisplay');
-            dartsDisplay.innerHTML = [0, 1, 2].map(i => {
+            dartsDisplay.innerHTML = [0, 1, 2].map(i => { // This part needs a better data source from the backend
                 const score = leg.turnScores[i];
                 const isActive = (i === leg.turnScores.length);
                 return `<span class="dart-score ${isActive ? 'active' : ''}">${score !== undefined ? score : '-'}</span>`;
@@ -180,9 +211,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update Leaderboard (using BEM classes)
             const leaderboardElement = document.getElementById('leaderboard');
             leaderboardElement.innerHTML = match.players.map((p, index) => {
-                const pLegAvg = p.dartsThrown > 0 ? (p.totalPointsScored / p.dartsThrown * 3).toFixed(2) : '0.00';
+                const pTotalPoints = (match.gameType - p.score);
+                const pLegAvg = p.dartsThrown > 0 ? (pTotalPoints / p.dartsThrown * 3).toFixed(2) : '0.00';
                 return `
-                    <div class="player-card ${index === leg.currentPlayerIndex ? 'player-card--active' : ''}">
+                    <div class="player-card ${index === match.currentPlayerIndex ? 'player-card--active' : ''}">
                         <span class="player-card__name">${p.name}</span>
                         <span class="player-card__score">${p.score}</span>
                         <span class="player-card__avg">Avg: ${pLegAvg}</span>
@@ -191,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     
             // Update sound settings from the server state
-            soundSettings.useSoundEffects = match.settings.useSoundEffects;
+            soundSettings.useSoundEffects = match.soundEffects; // Assuming this is part of the match state
     
             // Redraw chart with new data
             drawBurnDownChart(match);
@@ -238,8 +270,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 if (res.success) {
                     const newMatchState = res.match;
-                    const currentPlayerName = previousMatchState.players[previousMatchState.currentLeg.currentPlayerIndex].name;
-                    const newPlayerState = newMatchState.players.find(p => p.name === currentPlayerName);
+                    const currentPlayerIndex = previousMatchState.currentPlayerIndex;
+                    const newPlayerState = newMatchState.players[currentPlayerIndex];
                     const oldPlayerState = previousMatchState.players.find(p => p.name === currentPlayerName);
 
                     // Check for a match win
@@ -288,8 +320,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function showWinModal(winningPlayer) {
             const winModal = document.getElementById('winModal');
-            document.getElementById('modalWinnerText').innerText = `${winningPlayer.name} Wins the Leg!`;
-            const legAvg = winningPlayer.dartsThrown > 0 ? (winningPlayer.totalPointsScored / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
+            document.getElementById('winnerText').innerText = `${winningPlayer.name} Wins the Leg!`;
+            const totalPoints = (previousMatchState.gameType - winningPlayer.score);
+            const legAvg = winningPlayer.dartsThrown > 0 ? (totalPoints / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
             document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${legAvg}`;
             winModal.style.display = 'flex';
         }
@@ -302,12 +335,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const container = document.getElementById('burnDownChartContainer');
             if (!container || !google.visualization || !matchState) return;
 
-            const leg = matchState.currentLeg;
-            const history = leg.history;
+            const history = matchState.history;
             const players = matchState.players;
 
             const dataTable = new google.visualization.DataTable();
-            dataTable.addColumn('number', 'Darts Thrown');
+            dataTable.addColumn('number', 'Turn');
             players.forEach(p => dataTable.addColumn('number', p.name));
 
             // Add the starting point
@@ -315,18 +347,16 @@ document.addEventListener('DOMContentLoaded', function() {
             dataTable.addRow(initialRow);
 
             // Process history to build the chart data
-            let totalDarts = 0;
-            history.forEach((state) => {
-                totalDarts++;
-                const scores = state.players.map(p => p.score);
-                dataTable.addRow([totalDarts, ...scores]);
+            let turn = 0;
+            history.forEach((turnState) => {
+                turn++;
+                const scores = players.map((p, index) => {
+                    // This logic is complex and needs a better history structure from the backend
+                    // For now, this is a placeholder
+                    return turnState.playerIndex === index ? turnState.previousScore : p.score;
+                });
+                dataTable.addRow([turn, ...scores]);
             });
-
-            // Add the current turn's darts
-            if (leg.turnScores.length > 0) {
-                const currentScores = players.map(p => p.score);
-                dataTable.addRow([totalDarts + leg.turnScores.length, ...currentScores]);
-            }
 
             const options = {
                 title: 'Score Burn-Down',
@@ -336,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 backgroundColor: 'transparent',
                 chartArea: { backgroundColor: 'transparent', width: '85%', height: '65%' },
                 hAxis: { 
-                    title: 'Darts Thrown in Leg',
+                    title: 'Turn Number',
                     titleTextStyle: { color: '#999', fontName: 'Segoe UI' },
                     textStyle: { color: '#999', fontName: 'Segoe UI' } 
                 },
@@ -361,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Stats & History Screens ---
     async function loadStatsScreen() {
-        const res = await fetch('../api.php?action=get_players'); 
+        const res = await postAction('player:get_all');
         const players = await res.json();
         const ul = document.getElementById('registeredPlayersUl');
         ul.innerHTML = '';
@@ -446,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const detailsContainer = document.getElementById('playerStatsDetails');
         detailsContainer.innerHTML = `<p class="player-stats-details__message">Loading Head-to-Head stats...</p>`;
 
-        const res = await fetch(`index.php?action=get_h2h_stats&player1=${encodeURIComponent(player1Name)}&player2=${encodeURIComponent(player2Name)}`);
+        const res = await postAction('stats:h2h', { player1: player1Name, player2: player2Name });
         const result = await res.json();
 
         if (result.success) {
@@ -507,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadMatchHistory() {
         const container = document.getElementById('matchHistoryContainer');
         container.innerHTML = '<p>Loading match history...</p>';
-        const res = await fetch('index.php?action=get_matches'); 
+        const res = await postAction('stats:matches');
         const matches = await res.json();
         if (matches.length === 0) {
             container.innerHTML = '<p>No completed matches found.</p>';
