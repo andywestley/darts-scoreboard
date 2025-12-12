@@ -19,17 +19,19 @@ class GameController
         $isBust = (bool)($_POST['isBust'] ?? false);
         $isCheckout = (bool)($_POST['isCheckout'] ?? false);
         $dartsThrown = (int)($_POST['dartsThrown'] ?? 3);
+        
+        // The entire match state is now sent from the client.
+        $match = json_decode($_POST['matchState'] ?? 'null', true);
 
-        if (!isset($_SESSION['match'])) {
-            $this->jsonResponse(['success' => false, 'message' => 'No active match.']);
+        if ($match === null) {
+            $this->jsonResponse(['success' => false, 'message' => 'No match state provided.']);
             return;
         }
 
-        $match = &$_SESSION['match'];
         $currentPlayerIndex = $match['currentPlayerIndex'];
         $player = &$match['players'][$currentPlayerIndex];
 
-        // Store current state for undo
+        // Store current state for undo (this remains a good pattern)
         $match['history'][] = [
             'playerIndex' => $currentPlayerIndex,
             'previousScore' => $player['score'],
@@ -84,17 +86,20 @@ class GameController
             $match['currentPlayerIndex'] = ($match['currentPlayerIndex'] + 1) % count($match['players']);
         }
 
+        // In a stateless model, we save the new state back to the session
+        // so the page works on refresh, but the primary flow is stateless.
+        $_SESSION['match'] = $match;
         $this->jsonResponse(['success' => true, 'match' => $match]);
     }
 
     public function startNewLeg(): void
     {
-        if (!isset($_SESSION['match']) || $_SESSION['match']['isOver']) {
-            $this->jsonResponse(['success' => false, 'message' => 'No active match or match is already over.']);
+        $match = json_decode($_POST['matchState'] ?? 'null', true);
+
+        if ($match === null || $match['isOver']) {
+            $this->jsonResponse(['success' => false, 'message' => 'No active match provided or match is already over.']);
             return;
         }
-
-        $match = &$_SESSION['match'];
 
         // Reset scores for all players for the new leg
         foreach ($match['players'] as &$p) {
@@ -107,17 +112,19 @@ class GameController
         $match['currentLeg']++;
         $match['currentPlayerIndex'] = 0; // Start new leg with first player
 
+        $_SESSION['match'] = $match; // Save for refresh resiliency
         $this->jsonResponse(['success' => true, 'match' => $match]);
     }
 
     public function undo(): void
     {
-        if (!isset($_SESSION['match']) || empty($_SESSION['match']['history'])) {
-            $this->jsonResponse(['success' => false, 'message' => 'No actions to undo.']);
+        $match = json_decode($_POST['matchState'] ?? 'null', true);
+
+        if ($match === null || empty($match['history'])) {
+            $this->jsonResponse(['success' => false, 'message' => 'No match state provided or no actions to undo.']);
             return;
         }
 
-        $match = &$_SESSION['match'];
         $lastAction = array_pop($match['history']);
 
         $playerIndex = $lastAction['playerIndex'];
@@ -138,6 +145,7 @@ class GameController
             $match['currentPlayerIndex'] = $playerIndex;
         }
 
+        $_SESSION['match'] = $match; // Save for refresh resiliency
         $this->jsonResponse(['success' => true, 'match' => $match]);
     }
 

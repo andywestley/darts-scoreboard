@@ -51,10 +51,12 @@ function run_diagnostics() {
     $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
     
     // Start a session just to get a valid cookie and initial CSRF to perform the reset
-    if (session_status() === PHP_SESSION_NONE) { session_start(); }
-    $initialCsrf = $_SESSION['csrf_token'];
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $initialCsrf = $_SESSION['csrf_token'] ?? null;
     $initialCookie = 'PHPSESSID=' . session_id();
-    if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+    session_write_close();
 
     $resetCh = curl_init($baseUrl);
     curl_setopt($resetCh, CURLOPT_RETURNTRANSFER, 1);
@@ -66,6 +68,11 @@ function run_diagnostics() {
     curl_exec($resetCh);
     curl_close($resetCh);
     // The session is now destroyed on the server side.
+    // We must now start a completely new session to get the new cookie and CSRF token.
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $newSessionId = session_id();
 
     // --- Test 2: API Endpoint Execution ---
     // We need the CSRF token for POST requests.
@@ -74,11 +81,7 @@ function run_diagnostics() {
         session_start();
     }
     $csrfToken = $_SESSION['csrf_token'] ?? null;
-
-    // Close the session to prevent cURL requests from hanging.
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
-    }
+    session_write_close();
 
     $playersDataFile = __DIR__ . '/../data/players.json';
 
@@ -98,7 +101,10 @@ function run_diagnostics() {
     ];
 
     $apiResults = [];
-    $sessionCookie = 'PHPSESSID=' . session_id();
+    $sessionCookie = 'PHPSESSID=' . $newSessionId;
+
+    // This will hold the latest game state as we move through the tests.
+    $currentMatchState = null;
 
     foreach ($apiTests as $test) {
         $testResult = ['test' => $test];
@@ -107,6 +113,11 @@ function run_diagnostics() {
         // Move action to a header to avoid mod_security filters.
         $actionHeader = 'X-Action: ' . $test['action'];
         $postData = array_merge($test['data'], ['csrf_token' => $csrfToken]);
+
+        // If we have a match state, add it to the request.
+        if ($currentMatchState !== null) {
+            $postData['matchState'] = json_encode($currentMatchState);
+        }
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -121,14 +132,21 @@ function run_diagnostics() {
 
         $rawResponse = curl_exec($ch);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $responseBody = substr($rawResponse, $headerSize);
 
         $testResult['request_url'] = $url;
         $testResult['post_data_sent'] = $postData;
         $testResult['response_headers'] = substr($rawResponse, 0, $headerSize);
-        $testResult['response_body'] = substr($rawResponse, $headerSize);
+        $testResult['response_body'] = $responseBody;
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $testResult['curl_error_num'] = curl_errno($ch);
         $testResult['curl_error_msg'] = curl_error($ch);
+
+        // IMPORTANT: Update the current match state for the next iteration.
+        $responseJson = json_decode($responseBody, true);
+        if (isset($responseJson['success']) && $responseJson['success'] && isset($responseJson['match'])) {
+            $currentMatchState = $responseJson['match'];
+        }
 
         curl_close($ch);
         $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';

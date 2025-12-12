@@ -230,7 +230,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentThrow.base = baseScore;
                 const score = currentThrow.base * currentThrow.multiplier;
                 
-                const res = await postAction('game:score', { score, multiplier: currentThrow.multiplier, isBull });
+                const res = await postAction('game:score', { 
+                    score, 
+                    multiplier: currentThrow.multiplier, 
+                    isBull,
+                    matchState: JSON.stringify(previousMatchState) // Send the whole state
+                });
                 if (res.success) {
                     const newMatchState = res.match;
                     const currentPlayerName = previousMatchState.players[previousMatchState.currentLeg.currentPlayerIndex].name;
@@ -261,7 +266,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         undoBtn.addEventListener('click', async () => {
-            const res = await postAction('game:undo');
+            const res = await postAction('game:undo', {
+                matchState: JSON.stringify(previousMatchState)
+            });
             if (res.success) {
                 updateGameUI(res.match);
             }
@@ -269,7 +276,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (nextLegBtn) {
             nextLegBtn.addEventListener('click', async () => {
-                const res = await postAction('game:nextLeg');
+                const res = await postAction('game:nextLeg', {
+                    matchState: JSON.stringify(previousMatchState)
+                });
                 if (res.success) {
                     document.getElementById('winModal').style.display = 'none';
                     updateGameUI(res.match);
