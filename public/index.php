@@ -149,6 +149,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
         <header>
             <!-- The "New Game" button is now handled by JavaScript to avoid full page reloads -->
             <button id="resetGameBtn" class="reset-link-button">← New Game</button>
+            <!-- "Kill Switch" for forcing a session reset if the main JS fails -->
+            <button id="forceResetBtn" class="reset-link-button" style="color: #dc3545; margin-left: auto;">Force Reset</button>
             <span id="legDisplay"></span>
         </header>
 
@@ -239,6 +241,40 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <audio id="oneEightySound" src="sounds/180.mp3" preload="none"></audio>
     <audio id="winSound" src="sounds/win.mp3" preload="none"></audio>
 
+<!-- This script is separate from app.js to ensure the "Force Reset" button always works, even if app.js crashes. -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const forceResetBtn = document.getElementById('forceResetBtn');
+        if (forceResetBtn) {
+            forceResetBtn.addEventListener('click', async function() {
+                if (confirm('This will force a full reset of the game session. Are you sure?')) {
+                    try {
+                        // We need a JWT to perform any action.
+                        let token = localStorage.getItem('darts_jwt');
+                        if (!token) {
+                            alert('No authentication token found. Cannot reset.');
+                            return;
+                        }
+
+                        const response = await fetch('index.php', {
+                            method: 'POST',
+                            headers: {
+                                'X-Action': 'session:reset',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        // Regardless of success, reload the page to see the result.
+                        window.location.reload();
+                    } catch (e) {
+                        alert('An error occurred while trying to force a reset. Check the console.');
+                        console.error('Force Reset Failed:', e);
+                    }
+                }
+            });
+        }
+    });
+</script>
 <script src="js/app.js" defer></script>
 
 </body>
