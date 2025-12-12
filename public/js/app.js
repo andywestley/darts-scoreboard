@@ -235,6 +235,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (!match || !match.players) return;
     
             const player = match.players[match.currentPlayerIndex] || {};
+            const scoreInputContainer = document.getElementById('score-input-container'); // Or your actual selector
+            const winModal = document.getElementById('winModal');
+
+            console.log('[updateGameUI] Hiding modal and showing score input by default.');
     
             // Update Header
             const matchScore = match.players.map(p => `${p.name.split(' ')[0]} (${p.legsWon})`).join(' - ');
@@ -277,6 +281,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     
             // Store the current state to compare against the next one
             previousMatchState = JSON.parse(JSON.stringify(match));
+
+            // Default UI state for an active leg
+            winModal.style.display = 'none';
+            scoreInputContainer.style.display = 'block';
         }
     
     
@@ -343,7 +351,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     if (newPlayerState && oldPlayerState && newPlayerState.legsWon > oldPlayerState.legsWon) {
                         console.log(`[keypad.click] Leg won by ${newPlayerState.name}.`);
                         playSound('winSound');
-                        showWinModal(newPlayerState);
+                        showWinModal(newPlayerState, newMatchState); // Pass the new state
                     } else {
                         // It was a regular turn, just update the UI
                         playSound('dartHitSound');
@@ -383,13 +391,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
         }
 
-        function showWinModal(winningPlayer) {
+        function showWinModal(winningPlayer, matchState) {
             console.log('[showWinModal] Displaying leg win modal for:', winningPlayer);
             const winModal = document.getElementById('winModal');
+            const scoreInputContainer = document.getElementById('score-input-container'); // Or your actual selector
+
             document.getElementById('winnerText').innerText = `${winningPlayer.name} wins the leg!`;
-            const totalPoints = (previousMatchState.gameType - winningPlayer.score);
+            const totalPoints = (matchState.gameType); // A full leg is the gameType
             const legAvg = winningPlayer.dartsThrown > 0 ? (totalPoints / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
             document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${legAvg}`;
+            scoreInputContainer.style.display = 'none'; // Hide the score input
             winModal.style.display = 'flex';
         }
 

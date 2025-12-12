@@ -56,14 +56,15 @@ class SetupController
             return;
         }
 
+        $gameType = (int)($_POST['gameType'] ?? 501);
         // Initialize match state in session
         $match = [
-            'gameType' => (int)($_POST['gameType'] ?? 501),
+            'gameType' => $gameType,
             'matchLegs' => (int)($_POST['matchLegs'] ?? 3),
             'checkoutAssistant' => ($_POST['checkoutAssistantToggle'] ?? 'true') === 'true',
             'soundEffects' => ($_POST['soundEffectsToggle'] ?? 'true') === 'true',
-            'players' => array_map(function ($name) use ($gameType) {
-                return ['name' => $name, 'score' => (int)$gameType, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => []];
+            'players' => array_map(function ($name) use ($gameType) { // Pass the correct variable
+                return ['name' => $name, 'score' => $gameType, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => []];
             }, $playerNames),
             'currentPlayerIndex' => 0,
             'currentLeg' => 1,
