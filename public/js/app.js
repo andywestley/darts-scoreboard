@@ -82,8 +82,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         const screen = document.getElementById(screenId);
         if (screen) {
             screen.classList.add('active');
-            if (screenId === 'statsScreen') loadStatsScreen();
-            if (screenId === 'matchHistoryScreen') loadMatchHistory();
+            // Initialize the screen's logic only when it becomes active
+            if (screenId === 'setupScreen') initSetupScreen();
+            if (screenId === 'gameScreen' && initialMatchState) initGameUI(initialMatchState);
+            if (screenId === 'statsScreen') initStatsScreen();
+            if (screenId === 'matchHistoryScreen') initMatchHistoryScreen();
+            if (screenId === 'matchSummaryScreen' && initialMatchState) showMatchSummary(initialMatchState);
         }
     }
 
@@ -104,11 +108,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // --- Setup Screen Logic ---
-    const addPlayerBtn = document.getElementById('addPlayerBtn');
-    const newPlayerNameInput = document.getElementById('newPlayerName');
-    const playerListDiv = document.getElementById('playerList');
-    const startGameBtn = document.getElementById('startGameBtn');
-
     // Fetches and renders the list of players in the current setup session.
     async function refreshSetupPlayers() {
         console.log('[refreshSetupPlayers] Fetching current setup players...');
@@ -120,6 +119,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function handleAddPlayer() {
+        const newPlayerNameInput = document.getElementById('newPlayerName');
         const name = newPlayerNameInput.value.trim();
         if (name) {
             console.log(`[handleAddPlayer] Attempting to add player: '${name}'`);
@@ -136,6 +136,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function updatePlayerList(players) {
+        const playerListDiv = document.getElementById('playerList');
         console.log('[updatePlayerList] Rendering player list:', players);
         playerListDiv.innerHTML = players.map(playerName => `
             <div class="player-tag">
@@ -145,14 +146,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         `).join('');
     }
 
-    if (addPlayerBtn) {
+    function initSetupScreen() {
+        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const newPlayerNameInput = document.getElementById('newPlayerName');
+        const playerListDiv = document.getElementById('playerList');
+        const startGameBtn = document.getElementById('startGameBtn');
+
+        if (addPlayerBtn.dataset.initialized) return; // Prevent re-attaching listeners
+
         addPlayerBtn.addEventListener('click', handleAddPlayer);
         newPlayerNameInput.addEventListener('keypress', e => {
             if (e.key === 'Enter') handleAddPlayer();
         });
 
         playerListDiv.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('player-tag__remove-btn')) {
+            if (e.target && e.target.classList.contains('player-tag__remove-btn')) {
                 const name = e.target.dataset.name;
                 console.log(`[playerListDiv.click] Attempting to remove player: '${name}'`);
                 const res = await postAction('player:remove', { playerName: name });
@@ -165,13 +173,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         startGameBtn.addEventListener('click', async () => {
             console.log('[startGameBtn.click] Attempting to start game...');
-            const res = await postAction('game:start', {
+            const res = await postAction('game:start', { 
                 gameType: document.getElementById('gameType').value,
                 matchLegs: document.getElementById('matchLegs').value,
                 checkoutAssistantToggle: document.getElementById('checkoutAssistantToggle').checked,
                 soundEffectsToggle: document.getElementById('soundEffectsToggle').checked,
             });
-            // A page reload is appropriate here as we are transitioning from setup to the game screen.
             console.log('[startGameBtn.click] Received response:', res);
             if (res.success) {
                 window.location.reload();
@@ -180,6 +187,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
 
+        addPlayerBtn.dataset.initialized = 'true';
         // Initial load of players in setup
         refreshSetupPlayers();
     }
@@ -439,7 +447,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let selectedH2HPlayers = [];
 
     // --- Stats & History Screens ---
-    async function loadStatsScreen() {
+    async function initStatsScreen() {
         console.log('[loadStatsScreen] Loading stats screen data...');
         const { players } = await postAction('player:get_all');
         const ul = document.getElementById('registeredPlayersUl');
@@ -589,7 +597,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         chart.draw(data, options);
     }
 
-    async function loadMatchHistory() {
+    async function initMatchHistoryScreen() {
         console.log('[loadMatchHistory] Loading match history...');
         const container = document.getElementById('matchHistoryContainer');
         container.innerHTML = '<p>Loading match history...</p>';
@@ -648,8 +656,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     window.showScreen = showScreen;
 
-    // Handle initial render for summary screen
-    if (document.getElementById('matchSummaryScreen').classList.contains('active') && initialMatchState) {
-        showMatchSummary(initialMatchState);
+    // Initial screen setup
+    const activeScreen = document.querySelector('.screen.active');
+    if (activeScreen) {
+        showScreen(activeScreen.id);
     }
 });
