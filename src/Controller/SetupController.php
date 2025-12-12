@@ -85,6 +85,8 @@ class SetupController
     {
         $gameType = $_POST['gameType'] ?? 501;
         $matchLegs = $_POST['matchLegs'] ?? 3;
+        $checkoutAssistant = ($_POST['checkoutAssistantToggle'] ?? 'true') === 'true';
+        $soundEffects = ($_POST['soundEffectsToggle'] ?? 'true') === 'true';
         $playerNames = $_SESSION['setup_players'] ?? [];
 
         if (count($playerNames) < 1) {
@@ -96,6 +98,8 @@ class SetupController
         $_SESSION['match'] = [
             'gameType' => (int)$gameType,
             'matchLegs' => (int)$matchLegs,
+            'checkoutAssistant' => $checkoutAssistant,
+            'soundEffects' => $soundEffects,
             'players' => array_map(function ($name) use ($gameType) {
                 return ['name' => $name, 'score' => (int)$gameType, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => []];
             }, $playerNames),

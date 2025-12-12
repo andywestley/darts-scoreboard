@@ -105,11 +105,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function handleAddPlayer() {
         const name = newPlayerNameInput.value.trim();
         if (name) {
-            const res = await postAction('player:add', { name });
+            const res = await postAction('player:add', { playerName: name });
             if (res.success) {
                 updatePlayerList(res.players);
                 newPlayerNameInput.value = '';
                 newPlayerNameInput.focus();
+            } else {
+                alert(`Error: ${res.message || 'Could not add player.'}`);
             }
         }
     }
@@ -133,7 +135,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (e.target.classList.contains('player-tag__remove-btn')) {
                 const name = e.target.dataset.name;
                 const res = await postAction('player:remove', { playerName: name });
-                if (res.success) updatePlayerList(res.players);
+                if (res.success) {
+                    updatePlayerList(res.players);
+                }
             }
         });
 
@@ -145,7 +149,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 soundEffectsToggle: document.getElementById('soundEffectsToggle').checked,
             });
             // A page reload is appropriate here as we are transitioning from setup to the game screen.
-            if (res.success) window.location.reload();
+            if (res.success) {
+                window.location.reload();
+            } else {
+                alert(`Error: ${res.message || 'Could not start game.'}`);
+            }
         });
 
         // Initial load of players in setup
@@ -254,15 +262,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (e.target.matches('.key[data-score]')) {
                 const baseScore = parseInt(e.target.dataset.score);
                 const isBull = baseScore === 50;
+                const remainingScore = previousMatchState.players[previousMatchState.currentPlayerIndex].score;
                 currentThrow.base = baseScore;
                 const score = currentThrow.base * currentThrow.multiplier;
+
+                // Determine if the throw is a bust or a valid checkout
+                const isBust = (remainingScore - score) < 0 || (remainingScore - score) === 1;
+                const isCheckout = (remainingScore - score) === 0 && currentThrow.multiplier === 2;
                 
                 const res = await postAction('game:score', { 
                     score, 
-                    multiplier: currentThrow.multiplier, 
-                    isBull,
+                    isBust,
+                    isCheckout,
                     matchState: JSON.stringify(previousMatchState) // Send the whole state
                 });
+
                 if (res.success) {
                     const newMatchState = res.match;
                     const currentPlayerIndex = previousMatchState.currentPlayerIndex;
@@ -285,6 +299,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         playSound('dartHitSound');
                         updateGameUI(newMatchState);
                     }
+                } else {
+                    alert(`Error: ${res.message || 'Could not submit score.'}`);
                 }
                 currentThrow = { base: null, multiplier: 1 };
                 updateMultiplierButtons();
@@ -338,12 +354,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             players.forEach(p => dataTable.addColumn('number', p.name));
 
             // Add the starting point
-            const initialRow = [0, ...players.map(() => matchState.settings.startScore)];
+            const initialRow = [0, ...players.map(() => matchState.gameType)];
             dataTable.addRow(initialRow);
 
             // Process history to build the chart data
             let turn = 0;
-            history.forEach((turnState) => {
+            (history || []).forEach((turnState) => {
                 turn++;
                 const scores = players.map((p, index) => {
                     // This logic is complex and needs a better history structure from the backend
