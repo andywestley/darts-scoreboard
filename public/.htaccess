@@ -1,5 +1,0 @@
-# This file ensures that the Authorization header is passed to PHP.
-# It is required for JWT-based authentication to work on many servers.
-RewriteEngine On
-RewriteCond %{HTTP:Authorization} .
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

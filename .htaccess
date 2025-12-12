@@ -1,12 +1,15 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-
-    # Ensure the Authorization header is passed to PHP for JWT
+    
+    # Pass the Authorization header to PHP.
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirect all non-file/directory requests to public/index.php
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ public/index.php [L]
+    # Handle requests for files that exist in the public directory (e.g., CSS, JS).
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # Route all other requests to the main index.php front controller.
+    RewriteRule ^(.*)$ public/index.php [L,QSA]
 </IfModule>
