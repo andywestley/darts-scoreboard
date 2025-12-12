@@ -264,8 +264,13 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
                             }
                         });
                         
-                        // Regardless of success, reload the page to see the result.
-                        window.location.reload();
+                        // Check if the HTTP request itself was successful.
+                        if (response.ok) {
+                            // If the server responded with a 2xx status, it's safe to reload.
+                            window.location.reload();
+                        } else {
+                            alert(`Reset failed. The server responded with status: ${response.status}. Check the console for more details.`);
+                        }
                     } catch (e) {
                         alert('An error occurred while trying to force a reset. Check the console.');
                         console.error('Force Reset Failed:', e);
