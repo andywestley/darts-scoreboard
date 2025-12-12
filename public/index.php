@@ -57,22 +57,6 @@ if ($action) {
 }
 
 // If there's no action, proceed with rendering the HTML view.
-// --- VIEW RENDERING LOGIC ---
-
-// Determine which screen to display based on the session state.
-// Defaults to 'setup', but will show 'summary' if the match is over.
-$current_screen = $_SESSION['screen'] ?? 'setup';
-if (isset($_SESSION['match']) && $_SESSION['match']['isOver']) {
-    $current_screen = 'summary';
-}
-
-// Inject initial state into a JavaScript variable for the client-side app.
-// This avoids an extra AJAX call on page load and is more efficient.
-$initial_state_json = 'null';
-if ($current_screen === 'game' || $current_screen === 'summary') {
-    $initial_state_json = json_encode($_SESSION['match'] ?? null);
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -84,10 +68,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime('css/style.css'); ?>">
 </head>
 <body>
-    <!-- A hidden script tag to pass the initial PHP state to our JavaScript file -->
-    <script id="initial-state-data" type="application/json"><?php echo htmlspecialchars($initial_state_json, ENT_QUOTES | ENT_SUBSTITUTE); ?></script>
     <!-- Setup Screen -->
-    <div id="setupScreen" class="screen <?php if ($current_screen === 'setup') echo 'active'; ?>">
+    <div id="setupScreen" class="screen active">
         <div class="setup-container">
             <h1>🎯 Pro Darts Scorer</h1>
             
@@ -144,7 +126,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     </div>
 
     <!-- Game Screen -->
-    <div id="gameScreen" class="screen <?php if ($current_screen === 'game') echo 'active'; ?>" data-rendered="false">
+    <div id="gameScreen" class="screen" data-rendered="false">
         <!-- This is now a skeleton. JS will render all content inside. -->
         <header>
             <!-- The "New Game" button is now handled by JavaScript to avoid full page reloads -->
@@ -216,7 +198,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     </div>
 
     <!-- Match Summary Screen -->
-    <div id="matchSummaryScreen" class="screen <?php if ($current_screen === 'summary') echo 'active'; ?>">
+    <div id="matchSummaryScreen" class="screen">
         <!-- This is now a skeleton. JS will render the summary. -->
         <div class="match-summary-container">
             <h2>Match Over!</h2>

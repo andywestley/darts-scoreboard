@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let jwtToken = null;
     let currentThrow = { base: null, multiplier: 1 };
     let soundSettings = { useSoundEffects: true };
+    let setupPlayers = []; // Client-side state for the setup screen
     let previousMatchState = null; // To detect leg wins
 
     // --- JWT Management ---
@@ -80,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             screen.classList.add('active');
             // Initialize the screen's logic only when it becomes active
             if (screenId === 'setupScreen') initSetupScreen();
-            if (screenId === 'gameScreen' && initialMatchState) initGameScreen(initialMatchState);
+            // Game screen is now initialized dynamically, not on page load
             if (screenId === 'statsScreen') initStatsScreen();
             if (screenId === 'matchHistoryScreen') initMatchHistoryScreen();
             if (screenId === 'matchSummaryScreen' && initialMatchState) showMatchSummary(initialMatchState);
@@ -116,30 +117,27 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- Setup Screen Logic ---
     // Fetches and renders the list of players in the current setup session.
-    async function refreshSetupPlayers() {
-        console.log('[refreshSetupPlayers] Fetching current setup players...');
-        const res = await postAction('player:get_setup');
-        if (res.success) {
-            console.log('[refreshSetupPlayers] Players received:', res.players);
-            updatePlayerList(res.players);
-        }
-    }
 
     async function handleAddPlayer() {
         const newPlayerNameInput = document.getElementById('newPlayerName');
         const name = newPlayerNameInput.value.trim();
         if (name) {
             console.log(`[handleAddPlayer] Attempting to add player: '${name}'`);
-            const res = await postAction('player:add', { playerName: name });
-            console.log('[handleAddPlayer] Received response object:', res);
-            if (res.success) {
-                updatePlayerList(res.players);
-                newPlayerNameInput.value = '';
-                newPlayerNameInput.focus();
-            } else {
-                alert(`Error: ${res.message || 'Could not add player.'}`);
+            // Add player to permanent storage, but manage setup list on the client
+            await postAction('player:persist', { playerName: name });
+
+            if (!setupPlayers.includes(name)) {
+                setupPlayers.push(name);
+                updatePlayerList(setupPlayers);
             }
+            newPlayerNameInput.value = '';
+            newPlayerNameInput.focus();
         }
+    }
+
+    function handleRemovePlayer(name) {
+        setupPlayers = setupPlayers.filter(p => p !== name);
+        updatePlayerList(setupPlayers);
     }
 
     function updatePlayerList(players) {
@@ -166,29 +164,32 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (e.key === 'Enter') handleAddPlayer();
         });
 
-        playerListDiv.addEventListener('click', async (e) => {
+        playerListDiv.addEventListener('click', (e) => {
             if (e.target && e.target.classList.contains('player-tag__remove-btn')) {
                 const name = e.target.dataset.name;
                 console.log(`[playerListDiv.click] Attempting to remove player: '${name}'`);
-                const res = await postAction('player:remove', { playerName: name });
-                if (res.success) {
-                    console.log('[playerListDiv.click] Player removed successfully.');
-                    updatePlayerList(res.players);
-                }
+                handleRemovePlayer(name);
             }
         });
 
         startGameBtn.addEventListener('click', async () => {
             console.log('[startGameBtn.click] Attempting to start game...');
+            if (setupPlayers.length === 0) {
+                alert('Please add at least one player to start a game.');
+                return;
+            }
             const res = await postAction('game:start', { 
                 gameType: document.getElementById('gameType').value,
                 matchLegs: document.getElementById('matchLegs').value,
                 checkoutAssistantToggle: document.getElementById('checkoutAssistantToggle').checked,
                 soundEffectsToggle: document.getElementById('soundEffectsToggle').checked,
+                players: JSON.stringify(setupPlayers) // Send the player list to the server
             });
             console.log('[startGameBtn.click] Received response:', res);
-            if (res.success) {
-                window.location.reload();
+            if (res.success && res.match) {
+                // Instead of reloading, initialize the game screen with the new match state
+                initGameScreen(res.match);
+                showScreen('gameScreen');
             } else {
                 alert(`Error: ${res.message || 'Could not start game.'}`);
             }
@@ -196,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         addPlayerBtn.dataset.initialized = 'true';
         // Initial load of players in setup
-        refreshSetupPlayers();
+        updatePlayerList(setupPlayers);
     }
 
     // --- Game Screen Logic ---
@@ -686,8 +687,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     window.showScreen = showScreen;
 
     // Initial screen setup
-    const activeScreen = document.querySelector('.screen.active');
-    if (activeScreen) {
-        showScreen(activeScreen.id);
-    }
+    // Always start on the setup screen in a stateless model
+    showScreen('setupScreen');
 });

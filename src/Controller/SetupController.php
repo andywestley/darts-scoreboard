@@ -32,62 +32,24 @@ class SetupController
         ]);
     }
 
-    public function addPlayer(): void
+    public function persistPlayer(): void
     {
         $playerName = trim($_POST['playerName'] ?? '');
         if (empty($playerName)) {
-            $this->jsonResponse(['success' => false, 'message' => 'Player name cannot be empty.']);
+            $this->jsonResponse(['success' => false, 'message' => 'Player name cannot be empty.']); // This action now only saves to the master list
             return;
         }
 
-        // First, ensure the player exists in the permanent storage for stat tracking.
-        // This should happen regardless of the current game session.
         if ($this->storage->getPlayerByName($playerName) === null) {
             $this->storage->addPlayer($playerName);
         }
 
-        // Next, handle the logic for the current game session.
-        $players = $_SESSION['setup_players'] ?? [];
-        if (in_array($playerName, $players)) {
-            $this->jsonResponse(['success' => false, 'message' => 'Player already added.']);
-            return;
-        }
-
-        $players[] = $playerName;
-        $_SESSION['setup_players'] = $players;
-
-        $this->jsonResponse(['success' => true, 'players' => $players]);
-    }
-
-    public function removePlayer(): void
-    {
-        $playerName = $_POST['playerName'] ?? '';
-        $players = $_SESSION['setup_players'] ?? [];
-
-        $key = array_search($playerName, $players);
-        if ($key !== false) {
-            unset($players[$key]);
-            $_SESSION['setup_players'] = array_values($players); // Re-index array
-            $this->jsonResponse(['success' => true, 'players' => $_SESSION['setup_players']]);
-            return;
-        }
-
-        $this->jsonResponse(['success' => false, 'message' => 'Player not found.']);
-    }
-
-    public function getSetupPlayers(): void
-    {
-        $players = $_SESSION['setup_players'] ?? [];
-        $this->jsonResponse(['success' => true, 'players' => $players]);
+        $this->jsonResponse(['success' => true]);
     }
 
     public function startGame(): void
     {
-        $gameType = $_POST['gameType'] ?? 501;
-        $matchLegs = $_POST['matchLegs'] ?? 3;
-        $checkoutAssistant = ($_POST['checkoutAssistantToggle'] ?? 'true') === 'true';
-        $soundEffects = ($_POST['soundEffectsToggle'] ?? 'true') === 'true';
-        $playerNames = $_SESSION['setup_players'] ?? [];
+        $playerNames = json_decode($_POST['players'] ?? '[]', true);
 
         if (count($playerNames) < 1) {
             $this->jsonResponse(['success' => false, 'message' => 'At least one player is required to start a game.']);
@@ -95,29 +57,30 @@ class SetupController
         }
 
         // Initialize match state in session
-        $_SESSION['match'] = [
-            'gameType' => (int)$gameType,
-            'matchLegs' => (int)$matchLegs,
-            'checkoutAssistant' => $checkoutAssistant,
-            'soundEffects' => $soundEffects,
+        $match = [
+            'gameType' => (int)($_POST['gameType'] ?? 501),
+            'matchLegs' => (int)($_POST['matchLegs'] ?? 3),
+            'checkoutAssistant' => ($_POST['checkoutAssistantToggle'] ?? 'true') === 'true',
+            'soundEffects' => ($_POST['soundEffectsToggle'] ?? 'true') === 'true',
             'players' => array_map(function ($name) use ($gameType) {
                 return ['name' => $name, 'score' => (int)$gameType, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => []];
             }, $playerNames),
             'currentPlayerIndex' => 0,
             'currentLeg' => 1,
             'isOver' => false,
-            'winner' => null,
+            'winnerName' => null,
             'history' => [], // To store turn-by-turn actions for undo
             'legHistory' => [], // To store summary of each leg
+            'standings' => [],
         ];
-        $_SESSION['screen'] = 'game';
 
-        $this->jsonResponse(['success' => true, 'redirect' => '/']);
+        $this->jsonResponse(['success' => true, 'match' => $match]);
     }
 
     public function reset(): void
     {
-        // Clear the session completely
+        // In a stateless model, reset is more complex.
+        // For now, we can just acknowledge the request. The client handles the reload.
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
@@ -128,8 +91,6 @@ class SetupController
         }
         session_destroy();
 
-        // For an API context, we should return a success message, not redirect.
-        // The client-side JS can then handle the page reload.
         $this->jsonResponse(['success' => true, 'message' => 'Session has been reset.']);
     }
 

@@ -37,9 +37,7 @@ class App
         // Simple Router
         $this->routes = [
             'auth:getToken'     => [$setupController, 'getAnonymousToken'],
-            'player:add'        => [$setupController, 'addPlayer'],
-            'player:remove'     => [$setupController, 'removePlayer'],
-            'player:get_setup'  => [$setupController, 'getSetupPlayers'], // For setup screen
+            'player:persist'    => [$setupController, 'persistPlayer'], // Persists a player name to the master list
             'player:get_all'    => [$statsController, 'getPlayers'],    // For stats screen
             'game:start'        => [$setupController, 'startGame'],
             'game:score'        => [$gameController, 'score'],
