@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- JWT Management ---
     async function initializeAuth() {
+        console.log('[initializeAuth] Starting authentication process...');
         jwtToken = localStorage.getItem('darts_jwt');
         if (!jwtToken) {
             // If we don't have a token, get one from the server.
@@ -22,11 +23,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (data.success && data.token) {
                     jwtToken = data.token;
                     localStorage.setItem('darts_jwt', jwtToken);
+                    console.log('[initializeAuth] New JWT fetched and stored.');
                 }
             } catch (e) {
                 console.error("Could not fetch auth token.", e);
                 alert("Authentication failed. Please refresh.");
             }
+        }
+    }
+        } else {
+            console.log('[initializeAuth] JWT found in localStorage.');
         }
     }
 
@@ -41,6 +47,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             formData.append(key, data[key]);
         }
 
+        console.log(`[postAction] Sending action: '${action}' with data:`, data);
+
         try {
             const response = await fetch('index.php', {
                 method: 'POST',
@@ -50,10 +58,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 },
                 body: formData,
             });
+
+            console.log(`[postAction] Received response with status: ${response.status}`);
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return await response.json();
+            const responseData = await response.json();
+            console.log('[postAction] Parsed response data:', responseData);
+            return responseData;
         } catch (error) {
             console.error('Error posting action:', error);
             alert('An error occurred. Please check the console and refresh the page.');
@@ -64,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await initializeAuth(); // Ensure we have a token before doing anything else.
 
     function showScreen(screenId) {
+        console.log(`[showScreen] Activating screen: '${screenId}'`);
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const screen = document.getElementById(screenId);
         if (screen) {
@@ -75,6 +89,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     function playSound(soundId) {
         if (!soundSettings.useSoundEffects) return;
+        console.log(`[playSound] Attempting to play sound: '${soundId}'`);
         const sound = document.getElementById(soundId);
         if (sound && sound.dataset.failed !== 'true') {
             sound.currentTime = 0;
@@ -96,8 +111,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Fetches and renders the list of players in the current setup session.
     async function refreshSetupPlayers() {
+        console.log('[refreshSetupPlayers] Fetching current setup players...');
         const res = await postAction('player:get_setup');
         if (res.success) {
+            console.log('[refreshSetupPlayers] Players received:', res.players);
             updatePlayerList(res.players);
         }
     }
@@ -105,7 +122,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function handleAddPlayer() {
         const name = newPlayerNameInput.value.trim();
         if (name) {
+            console.log(`[handleAddPlayer] Attempting to add player: '${name}'`);
             const res = await postAction('player:add', { playerName: name });
+            console.log('[handleAddPlayer] Received response object:', res);
             if (res.success) {
                 updatePlayerList(res.players);
                 newPlayerNameInput.value = '';
@@ -117,6 +136,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function updatePlayerList(players) {
+        console.log('[updatePlayerList] Rendering player list:', players);
         playerListDiv.innerHTML = players.map(playerName => `
             <div class="player-tag">
                 <span class="player-tag__name">${escapeHTML(playerName)}</span>
@@ -134,14 +154,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         playerListDiv.addEventListener('click', async (e) => {
             if (e.target.classList.contains('player-tag__remove-btn')) {
                 const name = e.target.dataset.name;
+                console.log(`[playerListDiv.click] Attempting to remove player: '${name}'`);
                 const res = await postAction('player:remove', { playerName: name });
                 if (res.success) {
+                    console.log('[playerListDiv.click] Player removed successfully.');
                     updatePlayerList(res.players);
                 }
             }
         });
 
         startGameBtn.addEventListener('click', async () => {
+            console.log('[startGameBtn.click] Attempting to start game...');
             const res = await postAction('game:start', {
                 gameType: document.getElementById('gameType').value,
                 matchLegs: document.getElementById('matchLegs').value,
@@ -149,6 +172,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 soundEffectsToggle: document.getElementById('soundEffectsToggle').checked,
             });
             // A page reload is appropriate here as we are transitioning from setup to the game screen.
+            console.log('[startGameBtn.click] Received response:', res);
             if (res.success) {
                 window.location.reload();
             } else {
@@ -171,6 +195,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const nextLegBtn = document.getElementById('nextLegBtn');
 
         function initGameUI(match) {
+            console.log('[initGameUI] Initializing game UI with match data:', match);
             // Generate number pad
             const numbersContainer = gameScreen.querySelector('.numbers');
             if (numbersContainer.children.length === 0) {
@@ -188,6 +213,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
         // This function is the core of the refactor. It updates the UI without a page reload.
         function updateGameUI(match) {
+            console.log('[updateGameUI] Updating UI with new match state:', match);
             if (!match || !match.players) return;
     
             const player = match.players[match.currentPlayerIndex] || {};
@@ -237,11 +263,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     
         function updateMultiplierButtons() {
+            console.log(`[updateMultiplierButtons] Setting multiplier to: ${currentThrow.multiplier}`);
             modDouble.classList.toggle('active', currentThrow.multiplier === 2);
             modTreble.classList.toggle('active', currentThrow.multiplier === 3);
         }
 
         function updateInputDisplay() {
+            console.log('[updateInputDisplay] Updating input display.');
             const score = currentThrow.base ? (currentThrow.base * currentThrow.multiplier) : 0;
             inputDisplay.innerText = score;
         }
@@ -269,6 +297,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Determine if the throw is a bust or a valid checkout
                 const isBust = (remainingScore - score) < 0 || (remainingScore - score) === 1;
                 const isCheckout = (remainingScore - score) === 0 && currentThrow.multiplier === 2;
+                console.log(`[keypad.click] Score: ${score}, isBust: ${isBust}, isCheckout: ${isCheckout}`);
                 
                 const res = await postAction('game:score', { 
                     score, 
@@ -277,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     matchState: JSON.stringify(previousMatchState) // Send the whole state
                 });
 
+                console.log('[keypad.click] Received response from game:score:', res);
                 if (res.success) {
                     const newMatchState = res.match;
                     const currentPlayerIndex = previousMatchState.currentPlayerIndex;
@@ -284,14 +314,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const oldPlayerState = previousMatchState.players.find(p => p.name === currentPlayerName);
 
                     // Check for a match win
-                    if (res.match.isOver) {
+                    if (newMatchState.isOver) {
+                        console.log('[keypad.click] Match is over.');
                         playSound('winSound');
-                        showMatchSummary(res.match);
+                        showMatchSummary(newMatchState);
                         return;
                     }
 
                     // Check for a leg win
-                    if (newPlayerState.legsWon > oldPlayerState.legsWon) {
+                    if (newPlayerState && oldPlayerState && newPlayerState.legsWon > oldPlayerState.legsWon) {
+                        console.log(`[keypad.click] Leg won by ${newPlayerState.name}.`);
                         playSound('winSound');
                         showWinModal(newPlayerState);
                     } else {
@@ -309,9 +341,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
 
         undoBtn.addEventListener('click', async () => {
+            console.log('[undoBtn.click] Attempting to undo last action...');
             const res = await postAction('game:undo', {
                 matchState: JSON.stringify(previousMatchState)
             });
+            console.log('[undoBtn.click] Received response:', res);
             if (res.success) {
                 updateGameUI(res.match);
             }
@@ -319,9 +353,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         if (nextLegBtn) {
             nextLegBtn.addEventListener('click', async () => {
+                console.log('[nextLegBtn.click] Attempting to start next leg...');
                 const res = await postAction('game:nextLeg', {
                     matchState: JSON.stringify(previousMatchState)
                 });
+                console.log('[nextLegBtn.click] Received response:', res);
                 if (res.success) {
                     document.getElementById('winModal').style.display = 'none';
                     updateGameUI(res.match);
@@ -330,6 +366,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         function showWinModal(winningPlayer) {
+            console.log('[showWinModal] Displaying leg win modal for:', winningPlayer);
             const winModal = document.getElementById('winModal');
             document.getElementById('winnerText').innerText = `${winningPlayer.name} wins the leg!`;
             const totalPoints = (previousMatchState.gameType - winningPlayer.score);
@@ -343,6 +380,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         google.charts.setOnLoadCallback(drawBurnDownChart);
 
         function drawBurnDownChart(matchState = null) {
+            console.log('[drawBurnDownChart] Attempting to draw chart with state:', matchState);
             const container = document.getElementById('burnDownChartContainer');
             if (!container || !google.visualization || !matchState) return;
 
@@ -402,10 +440,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- Stats & History Screens ---
     async function loadStatsScreen() {
+        console.log('[loadStatsScreen] Loading stats screen data...');
         const { players } = await postAction('player:get_all');
         const ul = document.getElementById('registeredPlayersUl');
         ul.innerHTML = '';
         if (players.length === 0) {
+            console.log('[loadStatsScreen] No registered players found.');
             ul.innerHTML = '<li>No registered players found.</li>';
             return;
         }
@@ -422,6 +462,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function handlePlayerStatSelection(playerName, allPlayers) {
+        console.log(`[handlePlayerStatSelection] Player selected: '${playerName}'`);
         const index = selectedH2HPlayers.indexOf(playerName);
         if (index > -1) {
             selectedH2HPlayers.splice(index, 1); // Deselect
@@ -434,6 +475,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function updateStatsDisplay(allPlayers) {
+        console.log('[updateStatsDisplay] Updating stats display for selection:', selectedH2HPlayers);
         // Update visual selection
         document.querySelectorAll('#registeredPlayersUl li').forEach(li => {
             li.classList.toggle('player-stats-list__item--active', selectedH2HPlayers.includes(li.dataset.playerName));
@@ -450,6 +492,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function displayPlayerStats(playerName, allPlayers) {
+        console.log(`[displayPlayerStats] Displaying single player stats for: '${playerName}'`);
         const detailsContainer = document.getElementById('playerStatsDetails');
         const player = allPlayers.find(p => p.name === playerName);
 
@@ -483,10 +526,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function displayH2HStats(player1Name, player2Name) {
+        console.log(`[displayH2HStats] Displaying H2H stats for: '${player1Name}' vs '${player2Name}'`);
         const detailsContainer = document.getElementById('playerStatsDetails');
         detailsContainer.innerHTML = `<p class="player-stats-details__message">Loading Head-to-Head stats...</p>`;
 
         const result = await postAction('stats:h2h', { player1: player1Name, player2: player2Name });
+        console.log('[displayH2HStats] Received H2H data:', result);
 
         if (result.success) {
             const h2h = result.data;
@@ -513,6 +558,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function drawAverageHistoryChart(player) {
+        console.log('[drawAverageHistoryChart] Drawing average history for:', player);
         const container = document.getElementById('avgHistoryChart');
         if (!container || !google.visualization || !player.averageHistory || player.averageHistory.length === 0) {
             container.innerHTML = '<p class="player-stats-details__message">Not enough data for average history chart.</p>';
@@ -544,9 +590,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function loadMatchHistory() {
+        console.log('[loadMatchHistory] Loading match history...');
         const container = document.getElementById('matchHistoryContainer');
         container.innerHTML = '<p>Loading match history...</p>';
         const { matches } = await postAction('stats:matches');
+        console.log('[loadMatchHistory] Received matches:', matches);
         if (matches.length === 0) {
             container.innerHTML = '<p>No completed matches found.</p>';
             return;
@@ -579,6 +627,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     window.toggleMatchDetails = function(index) {
+        console.log(`[toggleMatchDetails] Toggling details for match index: ${index}`);
         const details = document.getElementById(`match-details-${index}`);
         if (details) {
             details.style.display = details.style.display === 'block' ? 'none' : 'block';
