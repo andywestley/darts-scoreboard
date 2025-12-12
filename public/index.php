@@ -262,6 +262,9 @@ if ($action) {
         }
     });
 </script>
+<script src="js/screen.setup.js?v=<?= filemtime('js/screen.setup.js') ?>" defer></script>
+<script src="js/screen.game.js?v=<?= filemtime('js/screen.game.js') ?>" defer></script>
+<script src="js/screen.stats.js?v=<?= filemtime('js/screen.stats.js') ?>" defer></script>
 <script src="js/app.js?v=<?= filemtime('js/app.js') ?>" defer></script>
 
 </body>
