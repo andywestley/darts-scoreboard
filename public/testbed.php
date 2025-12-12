@@ -4,7 +4,12 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 function run_diagnostics() {
-    $report = [];
+    $report = [
+        'environment' => [],
+        'permissions' => [],
+        'api'         => [],
+        'logging'     => [],
+    ];
 
     // --- Test 0: PHP Environment ---
     $envResults = [];
