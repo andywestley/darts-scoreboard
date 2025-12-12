@@ -161,6 +161,52 @@ function run_diagnostics() {
     unlink($cookieJar); // Clean up the cookie jar file
     $report['api'] = $apiResults;
 
+    // --- Test 3: PHP Error Logging ---
+    $logFile = '/var/www/vhosts/andrewwestley.co.uk/dartboard.andrewwestley.co.uk/logs/php_errors.log';
+    $logResults = [];
+    $logDir = dirname($logFile);
+
+    if (is_dir($logDir)) {
+        $logResults[] = ['PASS', "Log directory exists.", $logDir];
+        if (is_writable($logDir)) {
+            $logResults[] = ['PASS', "Log directory is writable."];
+
+            // Check file writability or creatability
+            if (file_exists($logFile)) {
+                if (is_writable($logFile)) {
+                    $logResults[] = ['PASS', "Log file exists and is writable.", $logFile];
+                } else {
+                    $logResults[] = ['FAIL', "Log file exists but is NOT writable. Check permissions.", $logFile];
+                }
+            } else {
+                $logResults[] = ['PASS', "Log file does not exist, but directory is writable (should be auto-created).", $logFile];
+            }
+
+            // Attempt to write and verify
+            $uniqueMarker = "LOG_TEST_" . bin2hex(random_bytes(8));
+            $testMessage = "PHP log test from testbed.php successful. Marker: " . $uniqueMarker;
+            error_log($testMessage);
+            $logResults[] = ['INFO', "Attempted to write test message with marker: {$uniqueMarker}"];
+
+            // Give the filesystem a moment
+            sleep(1);
+            if (file_exists($logFile) && ($logContents = file_get_contents($logFile)) !== false) {
+                if (strpos($logContents, $uniqueMarker) !== false) {
+                    $logResults[] = ['PASS', "Verification complete. Test message found in log file."];
+                } else {
+                    $logResults[] = ['FAIL', "Verification failed. Test message NOT found. Check PHP's `error_log` directive."];
+                }
+            } else {
+                 $logResults[] = ['FAIL', "Could not read the log file after attempting to write to it."];
+            }
+        } else {
+            $logResults[] = ['FAIL', "Log directory is NOT writable. Check permissions.", $logDir];
+        }
+    } else {
+        $logResults[] = ['FAIL', "Log directory does not exist.", $logDir];
+    }
+    $report['logging'] = $logResults;
+
     return $report;
 }
 
@@ -255,6 +301,18 @@ $reportData = run_diagnostics();
                         </tr>
                     <?php endforeach; ?>
                 </table>
+
+                <h2>3. PHP Error Logging</h2>
+                <table>
+                    <?php foreach ($reportData['logging'] as $result): ?>
+                        <tr>
+                            <td class="status status-<?php echo strtolower($result[0]); ?>"><?php echo $result[0]; ?></td>
+                            <td><?php echo htmlspecialchars($result[1]); ?></td>
+                            <td><pre><?php echo htmlspecialchars($result[2] ?? ''); ?></pre></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+
                 <h2>2. API Endpoint Tests</h2>
                 <table>
                     <tr><th>Action</th><th>Method</th><th>Status Code</th><th>Details</th></tr>
