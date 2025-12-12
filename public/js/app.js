@@ -186,12 +186,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                 players: JSON.stringify(setupPlayers) // Send the player list to the server
             });
             console.log('[startGameBtn.click] Received response:', res);
+            console.log('%c[startGameBtn.click] Match object from server:', 'color: orange; font-weight: bold;', res.match);
+
             if (res.success && res.match) {
                 // Instead of reloading, initialize the game screen with the new match state
                 initGameScreen(res.match);
                 showScreen('gameScreen');
             } else {
-                alert(`Error: ${res.message || 'Could not start game.'}`);
+                alert(`Error starting game: ${res.message || 'An unknown error occurred.'}`);
             }
         });
 
@@ -212,8 +214,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     
         // This function updates the UI without a page reload.
         function updateGameUI(match) {
-            console.log('[updateGameUI] Updating UI with new match state:', match);
-            if (!match || !match.players) return;
+            console.log('%c[updateGameUI] Entry Point', 'color: green; font-weight: bold;', 'Rendering with match object:', match);
+
+            // --- DEBUGGING: Add a strong guard clause ---
+            if (!match || !match.players || !match.players.length) {
+                console.error('[updateGameUI] ABORTING RENDER: Match object is invalid or has no players.', match);
+                alert("Debug: updateGameUI was called with invalid data. See console for details.");
+                return;
+            }
     
             const player = match.players[match.currentPlayerIndex] || {};
             const scoreInputContainer = document.getElementById('score-input-container'); // Or your actual selector
@@ -227,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
             // Update Active Player Display
             document.getElementById('activeName').innerText = player.name;
+            console.log('[updateGameUI] Current player object:', player);
             document.getElementById('activeScore').innerText = player.score;
             const totalPointsScored = (match.gameType - player.score);
             const legAvg = player.dartsThrown > 0 ? (totalPointsScored / player.dartsThrown * 3).toFixed(2) : '0.00';
@@ -469,7 +478,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
         // --- Execution starts here ---
         // initializeGameScreenOnce(); // Set up static elements and listeners if not already done.
-        updateGameUI(match); // Always update the UI with the new match state.
+        updateGameUI(match); // Always update the UI with the new match state
     }
 
     function showWinModal(winningPlayer, matchState) {

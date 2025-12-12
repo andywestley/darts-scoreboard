@@ -75,6 +75,9 @@ class SetupController
             'standings' => [],
         ];
 
+        // --- DEBUGGING: Log the created match object to a file ---
+        file_put_contents(ROOT_PATH . '/debug_log.txt', "--- " . date('c') . " ---\n" . print_r($match, true) . "\n", FILE_APPEND);
+
         $this->jsonResponse(['success' => true, 'match' => $match]);
     }
 
