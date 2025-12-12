@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
     
             const player = match.players[match.currentPlayerIndex] || {};
-            const scoreInputContainer = document.getElementById('score-input-container'); // Or your actual selector
+            const scoreControls = document.querySelector('.controls');
             const winModal = document.getElementById('winModal');
 
             console.log('[updateGameUI] Hiding modal and showing score input by default.');
@@ -287,8 +287,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             previousMatchState = JSON.parse(JSON.stringify(match));
 
             // Default UI state for an active leg
-            winModal.style.display = 'none';
-            scoreInputContainer.style.display = 'block';
+            if (winModal) winModal.style.display = 'none';
+            if (scoreControls) {
+                scoreControls.style.display = 'block';
+            }
         }
     
     
@@ -487,12 +489,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     function showWinModal(winningPlayer, matchState) {
         console.log('[showWinModal] Displaying leg win modal for:', winningPlayer);
         const winModal = document.getElementById('winModal');
-        const scoreInputContainer = document.getElementById('score-input-container');
+        const scoreControls = document.querySelector('.controls');
         document.getElementById('winnerText').innerText = `${winningPlayer.name} wins the leg!`;
         const totalPoints = (matchState.gameType);
         const legAvg = winningPlayer.dartsThrown > 0 ? (totalPoints / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
         document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${legAvg}`;
-        scoreInputContainer.style.display = 'none';
+        if (scoreControls) {
+            scoreControls.style.display = 'none';
+        }
         winModal.style.display = 'flex';
     }
 
