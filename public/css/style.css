@@ -4,6 +4,7 @@
     --text-color: #f0f0f0;
     --accent-color: #00d1b2; /* A vibrant teal */
     --primary-button-bg: var(--accent-color);
+    --active-player-bg: #00b89c; /* A slightly darker shade for the active player */
     --primary-button-text: #1a1a1a;
     --secondary-button-bg: #4a4a4a;
     --secondary-button-text: #f0f0f0;
@@ -18,11 +19,24 @@ body {
     margin: 0;
     padding: 20px;
     min-height: 100vh;
+    box-sizing: border-box;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 h1 {
     margin-top: 0;
     color: var(--accent-color);
+}
+
+.header-title {
+    font-size: 1.2em;
+    font-weight: bold;
 }
 
 /* --- Core Layout: Screen Visibility --- */
@@ -126,6 +140,159 @@ h1 {
     font-weight: bold;
     font-size: 0.9em;
     cursor: pointer; /* To indicate the remove action */
+}
+
+.player-tag__remove-btn {
+    font-size: 1.2em;
+    line-height: 1;
+    opacity: 0.7;
+}
+
+.player-tag__remove-btn:hover {
+    opacity: 1;
+}
+
+/* --- Game Screen Redesign --- */
+.game-container {
+    display: grid;
+    grid-template-columns: 1fr 280px; /* Main content on left, leaderboard on right */
+    grid-template-rows: auto auto 1fr;
+    gap: 20px;
+    grid-template-areas:
+        "header header"
+        "player-display leaderboard"
+        "keypad leaderboard"
+        "chart chart";
+    max-width: 900px;
+}
+
+.game-container > header {
+    grid-area: header;
+}
+
+.player-display {
+    grid-area: player-display;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    border-left: 5px solid var(--active-player-bg);
+}
+
+.player-name-large {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.current-score-large {
+    font-size: 6em;
+    font-weight: bold;
+    line-height: 1;
+    color: var(--accent-color);
+}
+
+.stats-badge {
+    margin-top: 10px;
+    font-size: 1em;
+    color: var(--text-color-secondary);
+}
+
+.checkout-suggestion {
+    margin-top: 15px;
+    font-size: 1.2em;
+    font-weight: bold;
+    min-height: 25px; /* Reserve space */
+}
+
+.leaderboard {
+    grid-area: leaderboard;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.player-card {
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    border: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+.player-card--active {
+    border-color: var(--active-player-bg);
+}
+
+.player-card__name {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.player-card__score {
+    font-size: 2em;
+    font-weight: bold;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    color: var(--accent-color);
+}
+
+.player-card__avg {
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+}
+
+.keypad-container {
+    grid-area: keypad;
+}
+
+.dartboard-keypad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.keypad-container .input-display {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 2.5em;
+    font-weight: bold;
+    text-align: right;
+    margin-bottom: 15px;
+    color: var(--accent-color);
+}
+
+.key {
+    padding: 20px 10px;
+    font-size: 1.5em;
+    font-weight: bold;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.key:hover {
+    background-color: #3a3a3a;
+}
+
+.key-mod.active {
+    background-color: var(--accent-color);
+    color: var(--primary-button-text);
+}
+
+.chart-container {
+    grid-area: chart;
+    background-color: var(--card-bg);
+    padding: 10px;
+    border-radius: 8px;
+    min-height: 300px;
 }
 
 /* Accessibility helper class for visually-hidden labels */
