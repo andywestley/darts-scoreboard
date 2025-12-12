@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', async function () {
     // --- Global Namespace & State ---
-    const DartsApp = window.DartsApp = {};
+    const DartsApp = window.DartsApp || {};
     let jwtToken = null;
     DartsApp.soundSettings = { useSoundEffects: true };
 
