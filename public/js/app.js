@@ -29,8 +29,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.error("Could not fetch auth token.", e);
                 alert("Authentication failed. Please refresh.");
             }
-        }
-    }
         } else {
             console.log('[initializeAuth] JWT found in localStorage.');
         }
@@ -38,15 +36,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- Helper Functions ---
     async function postAction(action, data = {}) {
-        const formData = new FormData();
-
         // The JWT is now our authorization mechanism, replacing the CSRF token.
         if (!jwtToken) throw new Error("Authentication token is missing.");
-
+        const formData = new FormData();
         for (const key in data) {
             formData.append(key, data[key]);
         }
-        const formData = new FormData();
 
         console.log(`[postAction] Sending action: '${action}' with data:`, data);
 
@@ -85,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             screen.classList.add('active');
             // Initialize the screen's logic only when it becomes active
             if (screenId === 'setupScreen') initSetupScreen();
-            if (screenId === 'gameScreen' && initialMatchState) initGameUI(initialMatchState);
+            if (screenId === 'gameScreen' && initialMatchState) initGameScreen(initialMatchState);
             if (screenId === 'statsScreen') initStatsScreen();
             if (screenId === 'matchHistoryScreen') initMatchHistoryScreen();
             if (screenId === 'matchSummaryScreen' && initialMatchState) showMatchSummary(initialMatchState);
@@ -120,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function handleAddPlayer() {
-        const newPlayerNameInput = document.getElementById('newPlayerName'); // This should be defined inside initSetupScreen
+        const newPlayerNameInput = document.getElementById('newPlayerName');
         const name = newPlayerNameInput.value.trim();
         if (name) {
             console.log(`[handleAddPlayer] Attempting to add player: '${name}'`);
@@ -137,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function updatePlayerList(players) {
-        const playerListDiv = document.getElementById('playerList'); // This should be defined inside initSetupScreen
+        const playerListDiv = document.getElementById('playerList');
         console.log('[updatePlayerList] Rendering player list:', players);
         playerListDiv.innerHTML = players.map(playerName => `
             <div class="player-tag">
@@ -148,10 +143,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function initSetupScreen() {
-        const addPlayerBtn = document.getElementById('addPlayerBtn'); // Correctly scoped now
-        const newPlayerNameInput = document.getElementById('newPlayerName'); // Correctly scoped now
-        const playerListDiv = document.getElementById('playerList'); // Correctly scoped now
-        const startGameBtn = document.getElementById('startGameBtn'); // Correctly scoped now
+        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const newPlayerNameInput = document.getElementById('newPlayerName');
+        const playerListDiv = document.getElementById('playerList');
+        const startGameBtn = document.getElementById('startGameBtn');
 
         if (addPlayerBtn.dataset.initialized) return; // Prevent re-attaching listeners
 
@@ -320,7 +315,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const newMatchState = res.match;
                     const currentPlayerIndex = previousMatchState.currentPlayerIndex;
                     const newPlayerState = newMatchState.players[currentPlayerIndex];
-                    const oldPlayerState = previousMatchState.players[currentPlayerIndex];
+                    const oldPlayerState = previousMatchState.players.find(p => p.name === newPlayerState.name);
 
                     // Check for a match win
                     if (newMatchState.isOver) {
@@ -405,14 +400,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             dataTable.addRow(initialRow);
 
             // Process history to build the chart data
-            const turnScores = [...initialRow];
+            const turnScores = players.map(() => matchState.gameType);
             let turnCount = 0;
             (history || []).forEach((turnState) => {
                 turnCount++;
-                turnScores[turnState.playerIndex + 1] = turnState.previousScore;
+                turnScores[turnState.playerIndex] = turnState.previousScore;
                 // Add a row for each player's turn to create a stepped chart
                 if ((turnCount - 1) % players.length === players.length - 1 || turnCount === history.length) {
-                    dataTable.addRow([Math.ceil(turnCount / players.length), ...turnScores]);
+                    dataTable.addRow([Math.ceil(turnCount / players.length), ...turnScores.slice()]);
                 }
             });
 
@@ -441,23 +436,25 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Initial UI setup from session data
         if (initialMatchState) {
-            initGameUI(match);
+            initGameUI(initialMatchState);
         }
     }
 
     let selectedH2HPlayers = [];
 
     // --- Stats & History Screens ---
-    function initStatsScreen() {
-        const ul = document.getElementById('registeredPlayersUl');
+    async function initStatsScreen() {
         console.log('[loadStatsScreen] Loading stats screen data...');
-        const { players } = await postAction('player:get_all');
-        const ul = document.getElementById('registeredPlayersUl');
-        ul.innerHTML = '';
-        if (players.length === 0) {
-            console.log('[loadStatsScreen] No registered players found.');
-            ul.innerHTML = '<li>No registered players found.</li>';
-        } else {
+        const res = await postAction('player:get_all');
+        if (res.success) {
+            const players = res.players;
+            const ul = document.getElementById('registeredPlayersUl');
+            if (!players || players.length === 0) {
+                console.log('[loadStatsScreen] No registered players found.');
+                ul.innerHTML = '<li>No registered players found.</li>';
+                return;
+            }
+
             ul.innerHTML = '';
             players.forEach(p => {
                 const li = document.createElement('li');
@@ -466,10 +463,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 li.onclick = () => handlePlayerStatSelection(p.name, players);
                 ul.appendChild(li);
             });
+            // Reset selection when loading the screen
+            selectedH2HPlayers = [];
+            updateStatsDisplay(players);
         }
-        // Reset selection when loading the screen
-        selectedH2HPlayers = [];
-        updateStatsDisplay(players);
     }
 
     function handlePlayerStatSelection(playerName, allPlayers) {
@@ -488,7 +485,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     function updateStatsDisplay(allPlayers) {
         console.log('[updateStatsDisplay] Updating stats display for selection:', selectedH2HPlayers);
         // Update visual selection
-        document.querySelectorAll('#registeredPlayersUl li').forEach(li => { // Corrected selector
+        document.querySelectorAll('#registeredPlayersUl li').forEach(li => {
             li.classList.toggle('player-stats-list__item--active', selectedH2HPlayers.includes(li.dataset.playerName));
         });
 
@@ -600,11 +597,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         chart.draw(data, options);
     }
 
-    function initMatchHistoryScreen() {
+    async function initMatchHistoryScreen() {
         console.log('[loadMatchHistory] Loading match history...');
         const container = document.getElementById('matchHistoryContainer');
         container.innerHTML = '<p>Loading match history...</p>';
-        const { matches } = await postAction('stats:matches');
+        const res = await postAction('stats:matches');
+        const matches = res.matches || [];
         console.log('[loadMatchHistory] Received matches:', matches);
         if (matches.length === 0) {
             container.innerHTML = '<p>No completed matches found.</p>';
