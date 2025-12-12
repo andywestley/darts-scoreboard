@@ -126,28 +126,28 @@ if ($action) {
     </div>
 
     <!-- Game Screen -->
-    <div id="gameScreen" class="screen" data-rendered="false">
+    <div id="gameScreen" class="screen game-container" data-rendered="false">
         <!-- This is now a skeleton. JS will render all content inside. -->
         <header>
             <!-- The "New Game" button is now handled by JavaScript to avoid full page reloads -->
             <button id="resetGameBtn" class="reset-link-button">← New Game</button>
             <!-- "Kill Switch" for forcing a session reset if the main JS fails -->
             <button id="forceResetBtn" class="reset-link-button" style="color: #dc3545; margin-left: auto;">Force Reset</button>
-            <span id="legDisplay"></span>
+            <span id="legDisplay" class="header-title"></span>
         </header>
 
-        <div class="active-player-display">
+        <div class="player-display">
             <div class="player-name-large" id="activeName"></div>
             <div class="current-score-large" id="activeScore"></div>
             <div class="stats-badge" id="activeAvg"></div>
             <div class="checkout-suggestion" id="checkoutHint"></div>
         </div>
 
-        <div id="burnDownChartContainer"></div>
+        <div id="burnDownChartContainer" class="chart-container"></div>
 
         <div class="leaderboard" id="leaderboard"></div>
 
-        <div class="controls">
+        <div class="controls keypad-container">
             <div class="darts-thrown-display" id="dartsThrownDisplay"></div>
             <div class="input-display" id="inputDisplay">0</div>
             <div class="dartboard-keypad">
