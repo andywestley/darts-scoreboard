@@ -476,11 +476,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const chart = new google.visualization.LineChart(container);
             chart.draw(dataTable, options);
-        } catch (e) {
-            console.error("Failed to draw burn-down chart. Continuing UI update.", e);
-            container.innerHTML = '<p style="color: #dc3545; text-align: center;">Error rendering chart.</p>';
-        }
-        } catch (e) {
+        } } catch (e) {
             console.error("Failed to draw burn-down chart. Continuing UI update.", e);
             container.innerHTML = '<p style="color: #dc3545; text-align: center;">Error rendering chart.</p>';
         }
