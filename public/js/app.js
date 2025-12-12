@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const newMatchState = res.match;
                     const currentPlayerIndex = previousMatchState.currentPlayerIndex;
                     const newPlayerState = newMatchState.players[currentPlayerIndex];
-                    const oldPlayerState = previousMatchState.players.find(p => p.name === currentPlayerName);
+                    const oldPlayerState = previousMatchState.players[currentPlayerIndex];
 
                     // Check for a match win
                     if (newMatchState.isOver) {
