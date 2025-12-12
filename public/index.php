@@ -262,7 +262,7 @@ if ($action) {
         }
     });
 </script>
-<script src="js/app.js" defer></script>
+<script src="js/app.js?v=<?= filemtime('js/app.js') ?>" defer></script>
 
 </body>
 </html>
