@@ -142,6 +142,15 @@ function run_diagnostics() {
         $testResult['curl_error_num'] = curl_errno($ch);
         $testResult['curl_error_msg'] = curl_error($ch);
 
+        // Capture the state of the session file for this specific session ID
+        $sessionFilePath = session_save_path() . '/sess_' . $newSessionId;
+        if (file_exists($sessionFilePath)) {
+            // This gives us a raw look at the session data on the server's disk
+            $testResult['session_data_raw'] = file_get_contents($sessionFilePath);
+        } else {
+            $testResult['session_data_raw'] = 'Session file not found.';
+        }
+
         // IMPORTANT: Update the current match state for the next iteration.
         $responseJson = json_decode($responseBody, true);
         if (isset($responseJson['success']) && $responseJson['success'] && isset($responseJson['match'])) {

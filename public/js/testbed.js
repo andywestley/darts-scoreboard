@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Section 2: API Tests
             md += '### 2. API Endpoint Tests\n';
             reportData.api.forEach((result, index) => {
-                const { test, status_code, players_before, players_after, response_body, request_url, post_data_sent, response_headers, curl_error_num, curl_error_msg } = result;
+                const { test, status_code, players_before, players_after, response_body, request_url, post_data_sent, response_headers, curl_error_num, curl_error_msg, session_data_raw } = result;
                 const isPass = status_code >= 200 && status_code < 300;
                 md += `\n---\n\n**Test ${index + 1}: \`${test.action}\`** (${test.method})\n\n`;
                 md += `- **Status:** ${isPass ? 'PASS' : 'FAIL'} (\`HTTP Code: ${status_code}\`)\n`;
@@ -135,12 +135,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 md += '#### Request Details\n';
                 md += '```\n' + `URL: ${request_url}` + '\n```\n';
-                md += '```json\n// POST Data Sent\n' + JSON.stringify(post_data_sent, null, 2) + '\n```\n\n';
+                
+                // Separate matchState from other POST data for clarity
+                const { matchState, ...otherPostData } = post_data_sent;
+                if (matchState) {
+                    md += '```json\n// Match State (Input)\n' + JSON.stringify(JSON.parse(matchState), null, 2) + '\n```\n';
+                }
+                md += '```json\n// Other POST Data Sent\n' + JSON.stringify(otherPostData, null, 2) + '\n```\n\n';
 
                 md += '#### Response Details\n';
                 md += '```http\n// Response Headers\n' + (response_headers.trim() || '(No headers received)') + '\n```\n';
-                md += '```json\n// Response Body\n' + (response_body.trim() || '{}') + '\n```\n\n';
+                const responseJson = JSON.parse(response_body.trim() || '{}');
+                if (responseJson.match) {
+                    md += '```json\n// Match State (Output)\n' + JSON.stringify(responseJson.match, null, 2) + '\n```\n';
+                }
+                md += '```json\n// Full Response Body\n' + JSON.stringify(responseJson, null, 2) + '\n```\n\n';
 
+                md += '#### Server & File State\n';
+                md += '```\n// Raw Session File Content\n' + (session_data_raw || '(Not available)') + '\n```\n';
                 md += '#### State Changes\n';
                 md += '```json\n// players.json (before)\n' + (players_before.trim() || '{}') + '\n```\n';
                 md += '```json\n// players.json (after)\n' + (players_after.trim() || '{}') + '\n```\n';
