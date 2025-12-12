@@ -60,22 +60,22 @@ function run_diagnostics() {
     $authCh = curl_init($baseUrl);
     curl_setopt($authCh, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($authCh, CURLOPT_HTTPHEADER, ['X-Action: auth:getToken']);
-    curl_setopt($authCh, CURLOPT_POST, 1); // Send as POST even with no body
+    curl_setopt($authCh, CURLOPT_POST, 1);
     $authResponse = curl_exec($authCh);
+    $authStatusCode = curl_getinfo($authCh, CURLINFO_HTTP_CODE);
+    $authCurlErrorNum = curl_errno($authCh);
+    $authCurlErrorMsg = curl_error($authCh);
     curl_close($authCh);
 
     $authData = json_decode($authResponse, true);
     if (isset($authData['success']) && $authData['success'] && isset($authData['token'])) {
         $jwtToken = $authData['token'];
     } else {
-        // If we can't get a token, we can't run the tests. Add a failure message.
-        // Create a full, structured error report to prevent JS errors.
+        // If we can't get a token, we can't run the tests. Return a structured error.
         $report['api'] = [[
             'test' => ['action' => 'auth:getToken', 'method' => 'POST'],
-            'status_code' => curl_getinfo($authCh, CURLINFO_HTTP_CODE) ?: 500,
+            'status_code' => $authStatusCode ?: 500,
             'response_body' => 'Failed to retrieve a valid JWT to run tests. Response: ' . $authResponse,
-            'players_before' => 'N/A',
-            'players_after' => 'N/A',
             'request_url' => $baseUrl,
             'post_data_sent' => [],
             'response_headers' => '', // Ensure this property exists
@@ -133,7 +133,13 @@ function run_diagnostics() {
         $testResult['test'] = $test; // Re-assign the modified test array to the result
 
         $rawResponse = curl_exec($ch);
+        // CRITICAL: Get cURL info BEFORE closing the handle to prevent fatal errors.
+        $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $testResult['curl_error_num'] = curl_errno($ch);
+        $testResult['curl_error_msg'] = curl_error($ch);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch); // Close the handle now that we have the info.
+
         $responseHeaders = substr($rawResponse, 0, $headerSize);
         $rawBody = substr($rawResponse, $headerSize);
         // Sanitize the response body to ensure it's valid UTF-8, preventing json_encode errors.
@@ -143,9 +149,6 @@ function run_diagnostics() {
         $testResult['post_data_sent'] = $postData;
         $testResult['response_headers'] = $responseHeaders;
         $testResult['response_body'] = $responseBody;
-        $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $testResult['curl_error_num'] = curl_errno($ch);
-        $testResult['curl_error_msg'] = curl_error($ch);
 
         // IMPORTANT: Update the current match state for the next iteration.
         $responseJson = json_decode($responseBody, true);
@@ -153,7 +156,6 @@ function run_diagnostics() {
             $currentMatchState = $responseJson['match'];
         }
 
-        curl_close($ch);
         $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
         $apiResults[] = $testResult;
     }
@@ -180,16 +182,16 @@ function run_diagnostics() {
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
 
         $rawResponse = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
         
         $apiResults[] = [
             'test' => $scoreTest,
-            'status_code' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
+            'status_code' => $statusCode,
             'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'),
-            'players_before' => 'N/A (State is in request)',
-            'players_after' => 'N/A (State is in response)',
+            // Other keys are omitted as this is a simplified, dynamic test.
         ];
-        curl_close($ch);
     }
 
     $report['api'] = $apiResults;
