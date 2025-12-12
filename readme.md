@@ -1,10 +1,10 @@
 # 🎯 Darts Scoreboard Application
 
-> A clean, interactive digital scoreboard for tracking X01 games (301, 501) with automatic score calculation, leg tracking, and checkout validation.
+A clean, interactive digital scoreboard for tracking X01 games (e.g., 301, 501) with automatic score calculation, leg tracking, and checkout validation.
 
 ![Status](https://img.shields.io/badge/status-active-success) ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## 📖 Table of Contents
+## Table of Contents
 - [Project Overview](#-project-overview)
 - [Architecture & Design Decisions](#-architecture--design-decisions)
 - [Technical Implementation](#-technical-implementation)
@@ -12,7 +12,7 @@
 - [Getting Started](#-getting-started)
 
 ---
-
+ 
 ## 🔭 Project Overview
 
 **Goal:** To replace the traditional chalkboard/whiteboard with a digital solution that handles the math, allowing players to focus on their throw.
@@ -20,11 +20,11 @@
 **Key Features:**
 * **X01 Game Logic:** Supports standard 501 and 301 formats.
 * **Automatic Math:** Subtraction, bust detection, and remaining score calculation.
-* **Turn Management:** Automatically switches active players and tracks legs/sets.
+* **Turn Management:** Automatically switches the active player and tracks legs won.
 * **Validation:** Prevents impossible scores (e.g., inputting > 180 or invalid checkout numbers).
 
 ---
-
+ 
 ## 🏗 Architecture & Design Decisions
 
 ### User Interface (UI) Strategy
@@ -33,13 +33,13 @@
 
 ### Game Logic Implementation
 * **"Bust" Mechanics:** Instead of simple subtraction, the system checks the result *before* committing the score. If `CurrentScore - Input < 0` or `CurrentScore - Input == 1`, the system triggers a "Bust" state, reverting the score to the start of the turn, adhering to official PDC rules.
-* **Double-Out Requirement:** The game logic enforces that the final dart must be a double to reach exactly zero.
+* **Double-Out Requirement:** The game logic enforces that a player's final dart must be a double to win the leg.
 
 ### State Management
-* **Centralized Game State:** We hold the game state (P1 Score, P2 Score, Legs, Current Turn) in a single object/source of truth. This prevents synchronization issues where the UI might show it's Player 1's turn while the internal logic thinks it's Player 2's.
+* **Server-Side State:** The game state (Player 1 Score, Player 2 Score, current turn, etc.) is managed authoritatively on the server using PHP sessions. The frontend sends user actions to the backend, which processes the logic, updates the session state, and returns the new state to the client. This ensures a single source of truth and prevents client-side tampering.
 
 ---
-
+ 
 ## 🛠 Technical Implementation
 
 ### Tech Stack
@@ -50,7 +50,7 @@
 
 ### Key Challenges & Solutions
 > **Challenge:** Handling Invalid Inputs.
->
+> 
 > **Solution:** All score submissions are validated on the PHP backend. The logic checks for bust conditions (score < 0 or score = 1) and enforces the double-out rule before committing the state change to the session.
 
 ### Project Structure
@@ -66,7 +66,7 @@ The project follows a modern PHP application structure with a public document ro
 *   `data/`: A private directory for storing JSON data files.
 
 ---
-
+ 
 ## 🚀 Future Enhancements
 
 ### 1. Alternative Game Modes
@@ -79,7 +79,7 @@ The project follows a modern PHP application structure with a public document ro
 
 
 ---
-
+ 
 ## 🏁 Getting Started
 
 This project requires a local web server with PHP.
