@@ -127,7 +127,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <div class="input-group">
                 <label>Add Players</label>
                 <div class="player-input-controls">
-                    <input type="text" id="newPlayerName" placeholder="Enter name...">
+                    <label for="newPlayerName" class="visually-hidden">Player Name</label>
+                    <input type="text" id="newPlayerName" placeholder="Enter name..." autocomplete="off">
                     <button class="btn btn-secondary btn-add-player" id="addPlayerBtn">+</button>
                 </div>
             </div>

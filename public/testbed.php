@@ -194,7 +194,8 @@ $reportData = run_diagnostics();
                         <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
                     </form>
                     <form>
-                        <input type="text" name="playerName" placeholder="Player Name" value="Alice" required>
+                        <label for="tb_playerName" class="visually-hidden">Player Name</label>
+                        <input type="text" id="tb_playerName" name="playerName" placeholder="Player Name" value="Alice" required>
                         <button type="submit" name="action" value="add_player">Add Player</button>
                     </form>
                     <form>
@@ -208,8 +209,10 @@ $reportData = run_diagnostics();
                     <div class="form-group">
                         <form>
                             <div class="form-row">
-                                <input type="number" name="score" placeholder="Score" value="100" required>
-                                <input type="number" name="dartsThrown" placeholder="Darts" value="3" style="width: 60px;">
+                                <label for="tb_score" class="visually-hidden">Score</label>
+                                <input type="number" id="tb_score" name="score" placeholder="Score" value="100" required>
+                                <label for="tb_dartsThrown" class="visually-hidden">Darts Thrown</label>
+                                <input type="number" id="tb_dartsThrown" name="dartsThrown" placeholder="Darts" value="3" style="width: 60px;">
                             </div>
                             <div class="form-row">
                                 <label class="checkbox-label"><input type="checkbox" name="isBust" value="true"> Is Bust</label>
