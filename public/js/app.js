@@ -208,11 +208,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         const modTreble = document.getElementById('modTreble');
         const inputDisplay = document.getElementById('inputDisplay');
         const undoBtn = document.getElementById('undoBtn');
-        const nextLegBtn = document.getElementById('nextLegBtn');
-    
-        function initGameUI(match) {
-            const resetGameBtn = document.getElementById('resetGameBtn');
-            if (resetGameBtn) resetGameBtn.addEventListener('click', handleReset);
+        const nextLegBtn = document.getElementById('nextLegBtn'); // This is inside the modal
+        const resetGameBtn = document.getElementById('resetGameBtn');
+
+        // This function sets up the static parts of the UI and attaches event listeners ONCE.
+        function initializeGameScreenOnce() {
             console.log('[initGameUI] Initializing game UI with match data:', match);
             // Generate number pad
             const numbersContainer = gameScreen.querySelector('.numbers');
@@ -225,8 +225,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     numbersContainer.appendChild(btn);
                 }
             }
-            updateGameUI(match);
-            gameScreen.dataset.initialized = 'true';
+
+            if (resetGameBtn && !resetGameBtn.dataset.initialized) {
+                resetGameBtn.addEventListener('click', handleReset);
+                resetGameBtn.dataset.initialized = 'true';
+            }
         }
     
         // This function updates the UI without a page reload.
@@ -300,21 +303,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             inputDisplay.innerText = score;
         }
 
-        modDouble.addEventListener('click', () => {
-            currentThrow.multiplier = currentThrow.multiplier === 2 ? 1 : 2;
-            updateMultiplierButtons();
-            updateInputDisplay();
-        });
+        // Attach event listeners only if they haven't been attached before.
+        if (!gameScreen.dataset.initialized) {
+            console.log('[initGameScreen] Attaching event listeners for the first time.');
 
-        modTreble.addEventListener('click', () => {
-            currentThrow.multiplier = currentThrow.multiplier === 3 ? 1 : 3;
-            updateMultiplierButtons();
-            updateInputDisplay();
-        });
+            modDouble.addEventListener('click', () => {
+                currentThrow.multiplier = currentThrow.multiplier === 2 ? 1 : 2;
+                updateMultiplierButtons();
+                updateInputDisplay();
+            });
 
-        keypad.addEventListener('click', async (e) => {
-            if (e.target.matches('.key[data-score]')) {
-                const baseScore = parseInt(e.target.dataset.score);
+            modTreble.addEventListener('click', () => {
+                currentThrow.multiplier = currentThrow.multiplier === 3 ? 1 : 3;
+                updateMultiplierButtons();
+                updateInputDisplay();
+            });
+
+            keypad.addEventListener('click', async (e) => {
+                if (!e.target.matches('.key[data-score]')) return;
+                const baseScore = parseInt(e.target.dataset.score, 10);
                 const isBull = baseScore === 50;
                 const remainingScore = previousMatchState.players[previousMatchState.currentPlayerIndex].score;
                 currentThrow.base = baseScore;
@@ -322,14 +329,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 // Determine if the throw is a bust or a valid checkout
                 const isBust = (remainingScore - score) < 0 || (remainingScore - score) === 1;
-                const isCheckout = (remainingScore - score) === 0 && currentThrow.multiplier === 2;
+                const isCheckout = (remainingScore - score) === 0 && (currentThrow.multiplier === 2 || isBull);
                 console.log(`[keypad.click] Score: ${score}, isBust: ${isBust}, isCheckout: ${isCheckout}`);
                 
                 const res = await postAction('game:score', { 
                     score, 
                     isBust,
-                    isCheckout, // This was missing
-                    matchState: JSON.stringify(previousMatchState) // Send the whole state
+                    isCheckout,
+                    matchState: JSON.stringify(previousMatchState)
                 });
 
                 console.log('[keypad.click] Received response from game:score:', res);
@@ -363,39 +370,41 @@ document.addEventListener('DOMContentLoaded', async function() {
                 currentThrow = { base: null, multiplier: 1 };
                 updateMultiplierButtons();
                 updateInputDisplay();
-            }
-        });
-
-        undoBtn.addEventListener('click', async () => {
-            console.log('[undoBtn.click] Attempting to undo last action...');
-            const res = await postAction('game:undo', {
-                matchState: JSON.stringify(previousMatchState)
             });
-            console.log('[undoBtn.click] Received response:', res);
-            if (res.success) {
-                updateGameUI(res.match);
-            }
-        });
 
-        if (nextLegBtn) {
-            nextLegBtn.addEventListener('click', async () => {
-                console.log('[nextLegBtn.click] Attempting to start next leg...');
-                const res = await postAction('game:nextLeg', {
+            undoBtn.addEventListener('click', async () => {
+                console.log('[undoBtn.click] Attempting to undo last action...');
+                const res = await postAction('game:undo', {
                     matchState: JSON.stringify(previousMatchState)
                 });
-                console.log('[nextLegBtn.click] Received response:', res);
+                console.log('[undoBtn.click] Received response:', res);
                 if (res.success) {
-                    document.getElementById('winModal').style.display = 'none';
                     updateGameUI(res.match);
                 }
             });
-        }
+
+            if (nextLegBtn) {
+                nextLegBtn.addEventListener('click', async () => {
+                    console.log('[nextLegBtn.click] Attempting to start next leg...');
+                    const res = await postAction('game:nextLeg', {
+                        matchState: JSON.stringify(previousMatchState)
+                    });
+                    console.log('[nextLegBtn.click] Received response:', res);
+                    if (res.success) {
+                        document.getElementById('winModal').style.display = 'none';
+                        updateGameUI(res.match);
+                    }
+                });
+            }
+
+            gameScreen.dataset.initialized = 'true';
+        } // End of one-time listener attachment
 
         function showWinModal(winningPlayer, matchState) {
             console.log('[showWinModal] Displaying leg win modal for:', winningPlayer);
             const winModal = document.getElementById('winModal');
             const scoreInputContainer = document.getElementById('score-input-container'); // Or your actual selector
-
+    
             document.getElementById('winnerText').innerText = `${winningPlayer.name} wins the leg!`;
             const totalPoints = (matchState.gameType); // A full leg is the gameType
             const legAvg = winningPlayer.dartsThrown > 0 ? (totalPoints / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
@@ -403,11 +412,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             scoreInputContainer.style.display = 'none'; // Hide the score input
             winModal.style.display = 'flex';
         }
-
+    
         // Initial chart draw
         google.charts.load('current', { 'packages': ['corechart'] });
         google.charts.setOnLoadCallback(drawBurnDownChart);
-
+    
         function drawBurnDownChart(matchState = null) {
             console.log('[drawBurnDownChart] Drawing chart with state:', matchState);
             const container = document.getElementById('burnDownChartContainer');
@@ -458,11 +467,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             const chart = new google.visualization.LineChart(container);
             chart.draw(dataTable, options);
         }
-
-        // Initial UI setup from session data
-        if (initialMatchState) {
-            initGameUI(initialMatchState);
-        }
+    
+        // --- Execution starts here ---
+        initializeGameScreenOnce(); // Set up static elements and listeners if not already done.
+        updateGameUI(match); // Always update the UI with the new match state.
     }
 
     let selectedH2HPlayers = [];
