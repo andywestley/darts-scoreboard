@@ -79,17 +79,8 @@ class SetupController
 
     public function reset(): void
     {
-        // In a stateless model, reset is more complex.
-        // For now, we can just acknowledge the request. The client handles the reload.
-        $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params["path"], $params["domain"],
-                $params["secure"], $params["httponly"]
-            );
-        }
-        session_destroy();
+        // In a stateless model, this action simply needs to provide a successful
+        // response so the client-side 'Force Reset' button knows it can reload the page.
 
         $this->jsonResponse(['success' => true, 'message' => 'Session has been reset.']);
     }

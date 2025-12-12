@@ -82,30 +82,25 @@ function run_diagnostics() {
 
     $playersDataFile = __DIR__ . '/../data/players.json';
 
+    // Updated API tests for the stateless architecture
     $apiTests = [
-        // Start with a reset to ensure a clean slate for the subsequent tests.
-        ['action' => 'session:reset', 'method' => 'POST', 'data' => []],
-        ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player A']],
-        ['action' => 'player:add', 'method' => 'POST', 'data' => ['playerName' => 'Player B']],
-        ['action' => 'game:start', 'method' => 'POST', 'data' => ['gameType' => '501', 'matchLegs' => '3']],
-        // Simulate a round of play
-        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 100, 'dartsThrown' => 3]], // Player A's turn
-        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 60, 'dartsThrown' => 3]],  // Player B's turn
-        // Simulate a bust score for Player A
-        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player A's turn (Score: 401 -> 221)
-        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player B's turn (Score: 441 -> 261)
-        ['action' => 'game:score', 'method' => 'POST', 'data' => ['score' => 180, 'dartsThrown' => 3]], // Player A attempts 180 on 221 -> BUST!
-        // This final test verifies the game state was updated correctly after the bust.
-        ['action' => 'game:state', 'method' => 'POST', 'data' => []],
+        ['action' => 'player:persist', 'method' => 'POST', 'data' => ['playerName' => 'Test Player A']],
+        ['action' => 'player:persist', 'method' => 'POST', 'data' => ['playerName' => 'Test Player B']],
+        [
+            'action' => 'game:start', 
+            'method' => 'POST', 
+            'data' => [
+                'players' => json_encode(['Test Player A', 'Test Player B']), 
+                'gameType' => '301'
+            ]
+        ],
+        // The game:score test now requires the full match state, which is handled dynamically below.
     ];
 
     $apiResults = [];
 
     // This will hold the latest game state as we move through the tests.
     $currentMatchState = null;
-
-    // Use a cookie jar to maintain the session between cURL requests.
-    $cookieJar = tempnam(sys_get_temp_dir(), 'cookie');
 
     foreach ($apiTests as $test) {
         $testResult = ['test' => $test];
@@ -126,22 +121,22 @@ function run_diagnostics() {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1); // We want to capture response headers
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieJar);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieJar);
+        curl_setopt($ch, CURLOPT_HEADER, 1); // We want to capture response headers for debugging
         curl_setopt($ch, CURLOPT_HTTPHEADER, [$actionHeader, $authHeader]);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        $test['method'] = 'POST'; // Reflect the actual method used
         $testResult['test'] = $test; // Re-assign the modified test array to the result
 
         $rawResponse = curl_exec($ch);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $responseBody = substr($rawResponse, $headerSize);
+        $responseHeaders = substr($rawResponse, 0, $headerSize);
+        $rawBody = substr($rawResponse, $headerSize);
+        // Sanitize the response body to ensure it's valid UTF-8, preventing json_encode errors.
+        $responseBody = mb_convert_encoding($rawBody, 'UTF-8', 'UTF-8');
 
         $testResult['request_url'] = $url;
         $testResult['post_data_sent'] = $postData;
-        $testResult['response_headers'] = substr($rawResponse, 0, $headerSize);
+        $testResult['response_headers'] = $responseHeaders;
         $testResult['response_body'] = $responseBody;
         $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $testResult['curl_error_num'] = curl_errno($ch);
@@ -158,7 +153,40 @@ function run_diagnostics() {
         $apiResults[] = $testResult;
     }
 
-    unlink($cookieJar); // Clean up the cookie jar file
+    // Dynamically add a 'game:score' test if the 'game:start' was successful
+    if ($currentMatchState) {
+        $scoreTest = [
+            'action' => 'game:score',
+            'method' => 'POST',
+            'data' => [
+                'score' => 100,
+                'isBust' => 'false',
+                'isCheckout' => 'false',
+                'matchState' => json_encode($currentMatchState)
+            ]
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $baseUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: ' . $scoreTest['action'], 'Authorization: Bearer ' . $jwtToken]);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
+
+        $rawResponse = curl_exec($ch);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        
+        $apiResults[] = [
+            'test' => $scoreTest,
+            'status_code' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
+            'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'),
+            'players_before' => 'N/A (State is in request)',
+            'players_after' => 'N/A (State is in response)',
+        ];
+        curl_close($ch);
+    }
+
     $report['api'] = $apiResults;
 
     // --- Test 3: PHP Error Logging ---
@@ -225,60 +253,8 @@ $reportData = run_diagnostics();
     <div class="container">
         <h1>🎯 Darts Scoreboard - Debugging Tools</h1>
 
-        <div class="tabs">
-            <button class="tab-link" data-tab="interactiveTab">Interactive Testbed</button>
-            <button class="tab-link active" data-tab="diagnosticsTab">Diagnostics Report</button>
-        </div>
-
-        <!-- Interactive Testbed Content -->
-        <div id="interactiveTab" class="tab-content">
-            <div class="scrollable-content">
-                <p>Use this page to test API actions independently. The raw server response will appear in the pinned window below.</p>
-                <fieldset>
-                    <legend>Setup Actions</legend>
-                    <form>
-                        <button type="submit" name="action" value="get_setup_players">Get Setup Players</button>
-                    </form>
-                    <form>
-                        <label for="tb_playerName" class="visually-hidden">Player Name</label>
-                        <input type="text" id="tb_playerName" name="playerName" placeholder="Player Name" value="Alice" required>
-                        <button type="submit" name="action" value="add_player">Add Player</button>
-                    </form>
-                    <form>
-                        <button type="submit" name="action" value="start_game">Start Game</button>
-                        <span class="note">(Adds 'Player 1' & 'Player 2' then starts a 501/3 game)</span>
-                    </form>
-                </fieldset>
-                <fieldset>
-                    <legend>Game Actions</legend>
-                    <p class="note">A game must be started for these to work.</p>
-                    <div class="form-group">
-                        <form>
-                            <div class="form-row">
-                                <label for="tb_score" class="visually-hidden">Score</label>
-                                <input type="number" id="tb_score" name="score" placeholder="Score" value="100" required>
-                                <label for="tb_dartsThrown" class="visually-hidden">Darts Thrown</label>
-                                <input type="number" id="tb_dartsThrown" name="dartsThrown" placeholder="Darts" value="3" style="width: 60px;">
-                            </div>
-                            <div class="form-row">
-                                <label class="checkbox-label"><input type="checkbox" name="isBust" value="true"> Is Bust</label>
-                                <label class="checkbox-label"><input type="checkbox" name="isCheckout" value="true"> Is Checkout</label>
-                            </div>
-                            <button type="submit" name="action" value="submit_score">Submit Score</button>
-                        </form>
-                    </div>
-                </fieldset>
-                <fieldset>
-                    <legend>Session Management</legend>
-                    <form>
-                        <button type="submit" name="action" value="reset">Reset Session</button>
-                    </form>
-                </fieldset>
-            </div>
-        </div>
-
         <!-- Diagnostics Report Content -->
-        <div id="diagnosticsTab" class="tab-content active">
+        <div id="diagnosticsTab" class="tab-content active" style="display: block;">
             <div id="report-container">
                 <button id="copyBtn">Copy Full Report to Clipboard</button>
                 <h2>0. PHP Environment</h2>
@@ -319,7 +295,7 @@ $reportData = run_diagnostics();
                     <?php foreach ($reportData['api'] as $result): ?>
                         <?php
                             $test = $result['test'];
-                            $statusCode = $result['status_code'];
+                            $statusCode = $result['status_code'] ?? 'N/A';
                             $isPass = ($statusCode >= 200 && $statusCode < 300);
                             $statusClass = $isPass ? 'status-pass' : 'status-fail';
 
@@ -333,17 +309,17 @@ $reportData = run_diagnostics();
                             };
                         ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($test['action']); ?></td>
-                            <td><?php echo htmlspecialchars($test['method']); ?></td>
+                            <td><?php echo htmlspecialchars($test['action'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($test['method'] ?? 'N/A'); ?></td>
                             <td class="<?php echo $statusClass; ?>"><?php echo htmlspecialchars($statusCode); ?></td>
                             <td>
                                 <div class="api-detail-block">
                                     <strong>players.json (before)</strong>
-                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_before'])); ?></pre>
+                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_before'] ?? '')); ?></pre>
                                 </div>
                                 <div class="api-detail-block">
                                     <strong>players.json (after)</strong>
-                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_after'])); ?></pre>
+                                    <pre><?php echo htmlspecialchars($prettyPrintJson($result['players_after'] ?? '')); ?></pre>
                                 </div>
                                 <div class="api-detail-block">
                                     <strong>API Response Payload</strong>
@@ -359,26 +335,16 @@ $reportData = run_diagnostics();
 
     <!-- Embed the full report data as JSON for the copy-to-clipboard functionality -->
     <script id="report-data-json" type="application/json">
-        <?php echo json_encode($reportData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?>
+        <?php
+            // Defensive JSON encoding. If this fails, output a valid JSON object with an error message.
+            $jsonReport = json_encode($reportData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                echo json_encode(['error' => 'Failed to encode report data.', 'json_error_message' => json_last_error_msg()]);
+            } else {
+                echo $jsonReport;
+            }
+        ?>
     </script>
-
-    <!-- Pinned Footer for Interactive Testbed -->
-    <div id="interactiveResponseContainer" class="response-container" style="display: none;">
-        <div class="response-pane">
-            <div class="title-bar">
-                <h2>Log</h2>
-                <button id="clearLogBtn">Clear</button>
-            </div>
-            <textarea id="logTextArea" readonly></textarea>
-        </div>
-        <div class="response-pane">
-            <div class="title-bar">
-                <h2>API Response</h2>
-                <button id="clearResponseBtn">Clear</button>
-            </div>
-            <textarea id="responseTextArea" readonly></textarea>
-        </div>
-    </div>
 
     <script src="js/testbed.js" defer></script>
 </body>
