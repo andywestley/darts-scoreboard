@@ -5,6 +5,7 @@ namespace Darts;
 use Darts\Controller\GameController;
 use Darts\Controller\SetupController;
 use Darts\Controller\StatsController;
+use Darts\Service\GameService;
 use Darts\Data\Storage;
 
 class App
@@ -27,21 +28,22 @@ class App
         // Dependency Injection Container (simple version)
         $this->storage = new Storage(ROOT_PATH);
         $setupController = new SetupController($this->storage);
-        $gameController = new GameController($this->storage);
         $statsController = new StatsController($this->storage);
+
+        // Create the GameService and inject it into the GameController
+        $gameService = new GameService();
+        $gameController = new GameController($gameService);
 
         // Simple Router
         $this->routes = [
             'auth:getToken'     => [$setupController, 'getAnonymousToken'],
             'player:add'        => [$setupController, 'addPlayer'],
             'player:remove'     => [$setupController, 'removePlayer'],
-            'player:get_setup'  => [$setupController, 'getSetupPlayers'],
-            'player:get_all'    => [$statsController, 'getPlayers'], // For stats screen
+            'player:get_setup'  => [$setupController, 'getSetupPlayers'], // For setup screen
+            'player:get_all'    => [$statsController, 'getPlayers'],    // For stats screen
             'game:start'        => [$setupController, 'startGame'],
-            'game:score'        => [$gameController, 'submitScore'],
-            'game:state'        => [$gameController, 'getGameState'], // Add this route
-            'game:undo'         => [$gameController, 'undo'],
-            'game:nextLeg'      => [$gameController, 'startNewLeg'],
+            'game:score'        => [$gameController, 'score'],
+            'game:nextLeg'      => [$gameController, 'nextLeg'],
             'session:reset'     => [$setupController, 'reset'],
             'stats:matches'     => [$statsController, 'getMatches'],
             'stats:h2h'         => [$statsController, 'getH2HStats'],

@@ -103,6 +103,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    async function handleReset() {
+        console.log('[handleReset] Attempting to reset game...');
+        if (confirm('Are you sure you want to start a new game? All progress will be lost.')) {
+            const res = await postAction('session:reset');
+            if (res.success) {
+                console.log('[handleReset] Reset successful, reloading.');
+                window.location.reload();
+            }
+        }
+    }
+
     // --- Setup Screen Logic ---
     // Fetches and renders the list of players in the current setup session.
     async function refreshSetupPlayers() {
@@ -199,6 +210,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const nextLegBtn = document.getElementById('nextLegBtn');
     
         function initGameUI(match) {
+            const resetGameBtn = document.getElementById('resetGameBtn');
+            if (resetGameBtn) resetGameBtn.addEventListener('click', handleReset);
             console.log('[initGameUI] Initializing game UI with match data:', match);
             // Generate number pad
             const numbersContainer = gameScreen.querySelector('.numbers');
@@ -641,6 +654,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (details) {
             details.style.display = details.style.display === 'block' ? 'none' : 'block';
         }
+    }
+
+    function showMatchSummary(match) {
+        console.log('[showMatchSummary] Displaying match summary:', match);
+        const winner = match.standings[0];
+        document.getElementById('matchWinnerName').innerText = `${winner.name} is the winner!`;
+        // You can build a more detailed summary table here if needed.
+        
+        const startNewMatchBtn = document.getElementById('startNewMatchBtn');
+        if (startNewMatchBtn) startNewMatchBtn.addEventListener('click', handleReset);
+
+        showScreen('matchSummaryScreen');
     }
 
     function getCheckoutGuide(score) {

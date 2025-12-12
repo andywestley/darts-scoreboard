@@ -78,7 +78,6 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Darts Scorer (PHP Edition)</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script> 
@@ -148,11 +147,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     <div id="gameScreen" class="screen <?php if ($current_screen === 'game') echo 'active'; ?>" data-rendered="false">
         <!-- This is now a skeleton. JS will render all content inside. -->
         <header>
-            <form action="index.php" method="post" style="display: inline;">
-                <input type="hidden" name="action" value="reset">
-                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                <button type="submit" class="reset-link-button">← New Game</button>
-            </form>
+            <!-- The "New Game" button is now handled by JavaScript to avoid full page reloads -->
+            <button id="resetGameBtn" class="reset-link-button">← New Game</button>
             <span id="legDisplay"></span>
         </header>
 
@@ -224,11 +220,8 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
             <h2>Match Over!</h2>
             <h3 id="matchWinnerName"></h3>
             <div id="matchSummaryTableContainer"></div>
-            <form action="index.php" method="post">
-                <input type="hidden" name="action" value="reset">
-                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                <button type="submit" class="btn btn-match-action">Start New Match</button>
-            </form>
+            <!-- This button will also be handled by JavaScript -->
+            <button id="startNewMatchBtn" class="btn btn-match-action">Start New Match</button>
         </div>
     </div>
 
