@@ -32,6 +32,12 @@ register_shutdown_function(function () {
     }
 });
 
+// 1. Start the session.
+// Even with a stateless JWT approach for gameplay, sessions are still used for the setup process.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // JWT Library - Manually included instead of using Composer
 require_once __DIR__ . '/src/lib/php-jwt/JWTExceptionWithPayloadInterface.php';
 require_once __DIR__ . '/src/lib/php-jwt/ExpiredException.php';

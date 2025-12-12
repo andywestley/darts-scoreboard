@@ -1,10 +1,12 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Redirect all requests to the public directory
-    RewriteRule ^$ public/ [L]
+    # Ensure the Authorization header is passed to PHP for JWT
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect all non-file/directory requests to public/index.php
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} !^/public/
-    RewriteRule ^(.*)$ public/$1
+    RewriteRule ^(.*)$ public/index.php [L]
 </IfModule>
