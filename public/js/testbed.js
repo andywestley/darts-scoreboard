@@ -2,10 +2,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Tab Functionality ---
     const tabs = document.querySelectorAll('.tab-link');
     const tabContents = document.querySelectorAll('.tab-content');
+    const interactiveResponseContainer = document.getElementById('interactiveResponseContainer');
 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const target = document.getElementById(tab.dataset.tab);
+
+            // Show/hide the interactive response footer
+            if (interactiveResponseContainer) {
+                interactiveResponseContainer.style.display = (tab.dataset.tab === 'interactiveTab') ? 'flex' : 'none';
+            }
 
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');

@@ -149,6 +149,18 @@ class GameController
         $this->jsonResponse(['success' => true, 'match' => $match]);
     }
 
+    public function getGameState(): void
+    {
+        $match = $_SESSION['match'] ?? null;
+
+        if ($match === null) {
+            $this->jsonResponse(['success' => false, 'message' => 'No active game found.']);
+            return;
+        }
+
+        $this->jsonResponse(['success' => true, 'match' => $match]);
+    }
+
     private function saveMatchStats(array $match): void
     {
         $matchSummary = [

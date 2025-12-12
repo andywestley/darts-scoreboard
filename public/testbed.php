@@ -104,6 +104,9 @@ function run_diagnostics() {
     // This will hold the latest game state as we move through the tests.
     $currentMatchState = null;
 
+    // Use a cookie jar to maintain the session between cURL requests.
+    $cookieJar = tempnam(sys_get_temp_dir(), 'cookie');
+
     foreach ($apiTests as $test) {
         $testResult = ['test' => $test];
         $testResult['players_before'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
@@ -124,6 +127,8 @@ function run_diagnostics() {
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_HEADER, 1); // We want to capture response headers
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieJar);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieJar);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [$actionHeader, $authHeader]);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
@@ -152,6 +157,8 @@ function run_diagnostics() {
         $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
         $apiResults[] = $testResult;
     }
+
+    unlink($cookieJar); // Clean up the cookie jar file
     $report['api'] = $apiResults;
 
     return $report;
@@ -295,7 +302,7 @@ $reportData = run_diagnostics();
     </script>
 
     <!-- Pinned Footer for Interactive Testbed -->
-    <div class="response-container">
+    <div id="interactiveResponseContainer" class="response-container" style="display: none;">
         <div class="response-pane">
             <div class="title-bar">
                 <h2>Log</h2>
