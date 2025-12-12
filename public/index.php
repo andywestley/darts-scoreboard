@@ -119,7 +119,7 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
 
             <div class="input-group">
                 <div class="checkbox-group">
-                    <input type="checkbox" id="soundEffectsToggle" checked>
+                    <input type="checkbox" id="soundEffectsToggle">
                     <label for="soundEffectsToggle">Enable Sound Effects</label>
                 </div>
             </div>
@@ -241,10 +241,10 @@ if ($current_screen === 'game' || $current_screen === 'summary') {
     </div>
 
     <!-- Audio Elements -->
-    <audio id="dartHitSound" src="sounds/click.mp3" preload="auto"></audio>
-    <audio id="bustSound" src="sounds/bust.mp3" preload="auto"></audio>
-    <audio id="oneEightySound" src="sounds/180.mp3" preload="auto"></audio>
-    <audio id="winSound" src="sounds/win.mp3" preload="auto"></audio>
+    <audio id="dartHitSound" src="sounds/click.mp3" preload="none"></audio>
+    <audio id="bustSound" src="sounds/bust.mp3" preload="none"></audio>
+    <audio id="oneEightySound" src="sounds/180.mp3" preload="none"></audio>
+    <audio id="winSound" src="sounds/win.mp3" preload="none"></audio>
 
 <script src="js/app.js" defer></script>
 
