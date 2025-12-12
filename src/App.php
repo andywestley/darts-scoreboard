@@ -35,6 +35,7 @@ class App
             'auth:getToken'     => [$setupController, 'getAnonymousToken'],
             'player:add'        => [$setupController, 'addPlayer'],
             'player:remove'     => [$setupController, 'removePlayer'],
+            'player:get_setup'  => [$setupController, 'getSetupPlayers'],
             'player:get_all'    => [$statsController, 'getPlayers'], // For stats screen
             'game:start'        => [$setupController, 'startGame'],
             'game:score'        => [$gameController, 'submitScore'],
