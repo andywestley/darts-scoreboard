@@ -33,7 +33,6 @@ register_shutdown_function(function () {
 });
 
 // JWT Library - Manually included instead of using Composer
-require_once __DIR__ . '/src/lib/php-jwt/Exception.php';
 require_once __DIR__ . '/src/lib/php-jwt/ExpiredException.php';
 require_once __DIR__ . '/src/lib/php-jwt/SignatureInvalidException.php';
 require_once __DIR__ . '/src/lib/php-jwt/BeforeValidException.php';
