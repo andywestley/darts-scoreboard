@@ -208,29 +208,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const modTreble = document.getElementById('modTreble');
         const inputDisplay = document.getElementById('inputDisplay');
         const undoBtn = document.getElementById('undoBtn');
-        const nextLegBtn = document.getElementById('nextLegBtn'); // This is inside the modal
-        const resetGameBtn = document.getElementById('resetGameBtn');
-
-        // This function sets up the static parts of the UI and attaches event listeners ONCE.
-        function initializeGameScreenOnce() {
-            console.log('[initGameUI] Initializing game UI with match data:', match);
-            // Generate number pad
-            const numbersContainer = gameScreen.querySelector('.numbers');
-            if (numbersContainer.children.length === 0) {
-                for (let i = 1; i <= 20; i++) {
-                    const btn = document.createElement('button');
-                    btn.className = 'key';
-                    btn.dataset.score = i;
-                    btn.innerText = i;
-                    numbersContainer.appendChild(btn);
-                }
-            }
-
-            if (resetGameBtn && !resetGameBtn.dataset.initialized) {
-                resetGameBtn.addEventListener('click', handleReset);
-                resetGameBtn.dataset.initialized = 'true';
-            }
-        }
+        const nextLegBtn = document.getElementById('nextLegBtn');
     
         // This function updates the UI without a page reload.
         function updateGameUI(match) {
@@ -317,6 +295,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Attach event listeners only if they haven't been attached before.
         if (!gameScreen.dataset.initialized) {
             console.log('[initGameScreen] Attaching event listeners for the first time.');
+            
+            // Generate number pad
+            const numbersContainer = gameScreen.querySelector('.numbers');
+            if (numbersContainer.children.length === 0) {
+                for (let i = 1; i <= 20; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'key';
+                    btn.dataset.score = i;
+                    btn.innerText = i;
+                    numbersContainer.appendChild(btn);
+                }
+            }
+
+            document.getElementById('resetGameBtn').addEventListener('click', handleReset);
 
             modDouble.addEventListener('click', () => {
                 currentThrow.multiplier = currentThrow.multiplier === 2 ? 1 : 2;
@@ -411,19 +403,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             gameScreen.dataset.initialized = 'true';
         } // End of one-time listener attachment
 
-        function showWinModal(winningPlayer, matchState) {
-            console.log('[showWinModal] Displaying leg win modal for:', winningPlayer);
-            const winModal = document.getElementById('winModal');
-            const scoreInputContainer = document.getElementById('score-input-container'); // Or your actual selector
-    
-            document.getElementById('winnerText').innerText = `${winningPlayer.name} wins the leg!`;
-            const totalPoints = (matchState.gameType); // A full leg is the gameType
-            const legAvg = winningPlayer.dartsThrown > 0 ? (totalPoints / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
-            document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${legAvg}`;
-            scoreInputContainer.style.display = 'none'; // Hide the score input
-            winModal.style.display = 'flex';
-        }
-    
         // Initial chart draw
         google.charts.load('current', { 'packages': ['corechart'] });
         google.charts.setOnLoadCallback(drawBurnDownChart);
@@ -433,6 +412,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             const container = document.getElementById('burnDownChartContainer');
             if (!container || !google.visualization || !matchState) return;
 
+            // Wrap the entire chart drawing logic in a try-catch block
+        try {
             const history = matchState.history;
             const players = matchState.players;
 
@@ -481,10 +462,26 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error("Failed to draw burn-down chart. Continuing UI update.", e);
             container.innerHTML = '<p style="color: #dc3545; text-align: center;">Error rendering chart.</p>';
         }
+        } catch (e) {
+            console.error("Failed to draw burn-down chart. Continuing UI update.", e);
+            container.innerHTML = '<p style="color: #dc3545; text-align: center;">Error rendering chart.</p>';
+        }
     
         // --- Execution starts here ---
-        initializeGameScreenOnce(); // Set up static elements and listeners if not already done.
+        // initializeGameScreenOnce(); // Set up static elements and listeners if not already done.
         updateGameUI(match); // Always update the UI with the new match state.
+    }
+
+    function showWinModal(winningPlayer, matchState) {
+        console.log('[showWinModal] Displaying leg win modal for:', winningPlayer);
+        const winModal = document.getElementById('winModal');
+        const scoreInputContainer = document.getElementById('score-input-container');
+        document.getElementById('winnerText').innerText = `${winningPlayer.name} wins the leg!`;
+        const totalPoints = (matchState.gameType);
+        const legAvg = winningPlayer.dartsThrown > 0 ? (totalPoints / winningPlayer.dartsThrown * 3).toFixed(2) : '0.00';
+        document.getElementById('winnerStats').innerText = `Final 3-Dart Avg: ${legAvg}`;
+        scoreInputContainer.style.display = 'none';
+        winModal.style.display = 'flex';
     }
 
     let selectedH2HPlayers = [];

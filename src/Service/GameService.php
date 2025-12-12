@@ -61,7 +61,7 @@ class GameService
         $match['players'][$winningPlayerIndex]['legsWon']++;
 
         // Check for match win
-        if ($match['players'][$winningPlayerIndex]['legsWon'] >= $match['legsToWin']) {
+        if ($match['players'][$winningPlayerIndex]['legsWon'] >= $match['matchLegs']) {
             $match['isOver'] = true;
             $match['winnerName'] = $match['players'][$winningPlayerIndex]['name'];
             $match['standings'] = $this->calculateFinalStandings($match);
