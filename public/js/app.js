@@ -212,6 +212,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         const undoBtn = document.getElementById('undoBtn');
         const nextLegBtn = document.getElementById('nextLegBtn');
     
+        // --- Execution starts here ---
+        updateGameUI(match); // Always update the UI with the new match state FIRST.
+
         // This function updates the UI without a page reload.
         function updateGameUI(match) {
             console.log('%c[updateGameUI] Entry Point', 'color: green; font-weight: bold;', 'Rendering with match object:', match);
@@ -414,7 +417,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Initial chart draw
         google.charts.load('current', { 'packages': ['corechart'] });
-        google.charts.setOnLoadCallback(drawBurnDownChart);
+        // We no longer call drawBurnDownChart from the callback, as it has no context of the match state.
+        // Instead, updateGameUI will call it directly once the library is loaded.
+        google.charts.setOnLoadCallback(function() {
+            console.log('[Google Charts] Library loaded. UI will now draw charts when updated.');
+        });
     
         function drawBurnDownChart(matchState = null) {
             console.log('[drawBurnDownChart] Drawing chart with state:', matchState);
@@ -475,10 +482,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error("Failed to draw burn-down chart. Continuing UI update.", e);
             container.innerHTML = '<p style="color: #dc3545; text-align: center;">Error rendering chart.</p>';
         }
-    
-        // --- Execution starts here ---
-        // initializeGameScreenOnce(); // Set up static elements and listeners if not already done.
-        updateGameUI(match); // Always update the UI with the new match state
     }
 
     function showWinModal(winningPlayer, matchState) {
