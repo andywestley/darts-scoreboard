@@ -38,20 +38,25 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Define a constant for the project root path, making includes reliable.
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', __DIR__);
+}
+
 // JWT Library - Manually included instead of using Composer
-require_once __DIR__ . '/src/lib/php-jwt/JWTExceptionWithPayloadInterface.php';
-require_once __DIR__ . '/src/lib/php-jwt/ExpiredException.php';
-require_once __DIR__ . '/src/lib/php-jwt/SignatureInvalidException.php';
-require_once __DIR__ . '/src/lib/php-jwt/BeforeValidException.php';
-require_once __DIR__ . '/src/lib/php-jwt/JWK.php';
-require_once __DIR__ . '/src/lib/php-jwt/JWT.php';
-require_once __DIR__ . '/src/lib/php-jwt/Key.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/JWTExceptionWithPayloadInterface.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/ExpiredException.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/SignatureInvalidException.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/BeforeValidException.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/JWK.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/JWT.php';
+require_once ROOT_PATH . '/src/lib/php-jwt/Key.php';
 
 // 3. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.
-require_once __DIR__ . '/src/Data/Storage.php'; // Dependency
-require_once __DIR__ . '/src/Service/GameService.php';
-require_once __DIR__ . '/src/Controller/SetupController.php'; // Dependency
-require_once __DIR__ . '/src/Controller/GameController.php'; // Dependency
-require_once __DIR__ . '/src/Controller/StatsController.php'; // Dependency
-require_once __DIR__ . '/src/App.php'; // Main App class, depends on the above
+require_once ROOT_PATH . '/src/Data/Storage.php'; // Dependency
+require_once ROOT_PATH . '/src/Service/GameService.php';
+require_once ROOT_PATH . '/src/Controller/SetupController.php'; // Dependency
+require_once ROOT_PATH . '/src/Controller/GameController.php'; // Dependency
+require_once ROOT_PATH . '/src/Controller/StatsController.php'; // Dependency
+require_once ROOT_PATH . '/src/App.php'; // Main App class, depends on the above
