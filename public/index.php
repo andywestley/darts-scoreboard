@@ -173,6 +173,14 @@ if ($action) {
         </div>
 
         <div id="burnDownChartContainer" class="chart-container"></div>
+
+        <!-- Win Modal (for leg wins) -->
+        <div id="winModal" class="modal">
+            <h2 id="winnerText">WINNER!</h2>
+            <div class="confetti" id="winnerConfetti">Game Shot!</div>
+            <div class="winner-stats" id="winnerStats"></div>
+            <button class="btn btn-modal-action" id="nextLegBtn">Start Next Leg</button>
+        </div>
     </div>
 
     <!-- Stats Screen -->
