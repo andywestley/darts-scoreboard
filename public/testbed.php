@@ -119,6 +119,43 @@ function run_diagnostics() {
         $serviceResults[] = ['FAIL', "GameService Turn-Based Scoring Test: Player score was {$finalScore}, but should have been {$expectedScore}."];
     }
 
+    // Test 4: GameService Valid Checkout Logic
+    $validCheckoutMatch = [
+        'currentPlayerIndex' => 0,
+        'players' => [['name' => 'Player 1', 'score' => 40, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => [501, 40]]],
+        'history' => [], 'gameType' => 501, 'matchLegs' => 3, 'currentLeg' => 1,
+    ];
+    // Simulate a checkout on Double 20
+    $checkoutDarts = [['score' => 40, 'multiplier' => 2, 'base' => 20]];
+    $updatedCheckoutMatch = $gameService->applyScore($validCheckoutMatch, $checkoutDarts);
+
+    if (isset($updatedCheckoutMatch['players'][0]['legsWon']) && $updatedCheckoutMatch['players'][0]['legsWon'] === 1) {
+        $serviceResults[] = ['PASS', 'GameService Valid Checkout Test: Player correctly won the leg on a double-out.'];
+    } else {
+        $legsWon = $updatedCheckoutMatch['players'][0]['legsWon'] ?? 'N/A';
+        $serviceResults[] = ['FAIL', "GameService Valid Checkout Test: Player should have won the leg, but legs won is {$legsWon}."];
+    }
+
+    // Test 5: GameService Invalid Checkout Logic (should bust)
+    $invalidCheckoutMatch = [
+        'currentPlayerIndex' => 0,
+        'players' => [['name' => 'Player 1', 'score' => 30, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => [501, 30]]],
+        'history' => [], 'gameType' => 501, 'matchLegs' => 3, 'currentLeg' => 1,
+    ];
+    // Simulate an invalid checkout on Single 10 after hitting a 20
+    $invalidDarts = [
+        ['score' => 20, 'multiplier' => 1, 'base' => 20],
+        ['score' => 10, 'multiplier' => 1, 'base' => 10]
+    ];
+    $updatedInvalidMatch = $gameService->applyScore($invalidCheckoutMatch, $invalidDarts);
+
+    if (isset($updatedInvalidMatch['players'][0]['score']) && $updatedInvalidMatch['players'][0]['score'] === 30) {
+        $serviceResults[] = ['PASS', 'GameService Invalid Checkout Test: Player score correctly reverted to 30 after an invalid (non-double) out.'];
+    } else {
+        $finalScore = $updatedInvalidMatch['players'][0]['score'] ?? 'N/A';
+        $serviceResults[] = ['FAIL', "GameService Invalid Checkout Test: Player score was {$finalScore}, but should have reverted to 30."];
+    }
+
     $report['service_tests'] = $serviceResults;
 
 

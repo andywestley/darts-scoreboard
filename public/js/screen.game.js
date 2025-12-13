@@ -120,7 +120,7 @@ window.DartsApp.initGameScreen = function(match) {
 
         // Update the display of darts thrown in the current turn
         const dartsDisplay = document.getElementById('dartsThrownDisplay');
-        dartsDisplay.innerText = currentTurnScores.length > 0 ? `Darts: ${currentTurnScores.join(', ')}` : '';
+        dartsDisplay.innerText = currentTurnScores.length > 0 ? `Darts: ${currentTurnScores.map(d => d.score).join(', ')}` : '';
 
         try {
             const leaderboardElement = document.getElementById('leaderboard');
@@ -229,9 +229,14 @@ window.DartsApp.initGameScreen = function(match) {
 
             const baseScore = parseInt(e.target.dataset.score, 10);
             currentThrow.base = baseScore;
-            const score = currentThrow.base * currentThrow.multiplier;
 
-            currentTurnScores.push(score);
+            const dart = {
+                score: currentThrow.base * currentThrow.multiplier,
+                multiplier: currentThrow.multiplier,
+                base: currentThrow.base
+            };
+
+            currentTurnScores.push(dart);
             playSound('dartHitSound');
 
             // Reset for next dart entry

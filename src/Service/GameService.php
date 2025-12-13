@@ -33,10 +33,12 @@ class GameService
         $scoreAtStartOfTurn = $player['score'];
         $turnTotal = 0;
         $isBust = false;
+        $lastDart = null;
 
-        foreach ($dartScores as $dartScore) {
-            $player['score'] -= $dartScore;
-            $turnTotal += $dartScore;
+        foreach ($dartScores as $dart) {
+            $lastDart = $dart; // Keep track of the last dart thrown
+            $player['score'] -= $dart['score'];
+            $turnTotal += $dart['score'];
             // Check for bust condition after each dart
             if ($player['score'] < 2) {
                 $isBust = true;
@@ -53,9 +55,23 @@ class GameService
             // Add the new score to the player's personal score history
             $player['scores'][] = $player['score'];
 
-            // Check for a valid checkout
-            if ($player['score'] === 0) {
-                $this->logger->info('Player has checked out, processing leg win.');
+            // Check for a valid checkout: score must be 0 AND last dart must be a double or bullseye.
+            if ($player['score'] === 0 && $lastDart !== null) {
+                $isDouble = $lastDart['multiplier'] === 2;
+                $isBullseye = $lastDart['base'] === 50; // Bullseye counts as a double
+
+                if (!$isDouble && !$isBullseye) {
+                    $isBust = true; // Invalid checkout is a bust
+                }
+            }
+
+            if ($isBust) {
+                // This block is now reachable if the checkout was invalid.
+                $this->logger->info('Player busted (invalid checkout).', ['player' => $player['name'], 'score_reverted_to' => $scoreAtStartOfTurn]);
+                $player['score'] = $scoreAtStartOfTurn;
+                $player['scores'][count($player['scores']) - 1] = $scoreAtStartOfTurn; // Correct the last history entry
+            } else if ($player['score'] === 0) {
+                $this->logger->info('Player has checked out with a valid double, processing leg win.');
                 return $this->processLegWin($match, $playerIndex);
             }
         }
