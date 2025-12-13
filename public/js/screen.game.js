@@ -200,7 +200,7 @@ window.DartsApp.initGameScreen = function(match) {
 
         const numbersContainer = gameScreen.querySelector('.numbers');
         if (numbersContainer.children.length === 0) {
-            for (let i = 1; i <= 20; i++) {
+            for (let i = 20; i >= 1; i--) {
                 const btn = document.createElement('button');
                 btn.className = 'key';
                 btn.dataset.score = i;

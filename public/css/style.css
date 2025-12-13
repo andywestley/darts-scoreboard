@@ -271,9 +271,15 @@ h1 {
 }
 
 .dartboard-keypad .modifiers,
-.dartboard-keypad .specials {
+.dartboard-keypad .modifiers {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.dartboard-keypad .specials {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Default to 2 columns */
     gap: 10px;
 }
 
