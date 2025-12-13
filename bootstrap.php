@@ -1,10 +1,23 @@
 <?php
 
+use Darts\Service\Logger;
+
 // 0. Global Error and Exception Handling
 ini_set('display_errors', 0); // Disable default HTML errors
 error_reporting(E_ALL);
 
+// Define a constant for the project root path early, as it's needed for the logger.
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', __DIR__);
+}
+
+// Manually include the Logger class so it can be used immediately.
+require_once ROOT_PATH . '/src/Service/Logger.php';
+$logger = new Logger(ROOT_PATH . '/app_log.txt', Logger::INFO);
+
 set_exception_handler(function ($exception) {
+    global $logger; // Make the logger available in this scope
+    $logger->error('Uncaught Exception', ['message' => $exception->getMessage(), 'file' => $exception->getFile(), 'line' => $exception->getLine()]);
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
@@ -19,6 +32,8 @@ set_exception_handler(function ($exception) {
 
 register_shutdown_function(function () {
     $error = error_get_last();
+    global $logger; // Make the logger available in this scope
+    if ($error) $logger->error('Fatal Error', $error);
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
         http_response_code(500);
         header('Content-Type: application/json');
@@ -38,11 +53,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Define a constant for the project root path, making includes reliable.
-if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', __DIR__);
-}
-
 // JWT Library - Manually included instead of using Composer
 require_once ROOT_PATH . '/src/lib/php-jwt/JWTExceptionWithPayloadInterface.php';
 require_once ROOT_PATH . '/src/lib/php-jwt/ExpiredException.php';
@@ -55,7 +65,6 @@ require_once ROOT_PATH . '/src/lib/php-jwt/Key.php';
 // 3. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.
 require_once ROOT_PATH . '/src/Data/Storage.php'; // Dependency
-require_once ROOT_PATH . '/src/Service/GameService.php';
 require_once ROOT_PATH . '/src/Controller/SetupController.php'; // Dependency
 require_once ROOT_PATH . '/src/Controller/GameController.php'; // Dependency
 require_once ROOT_PATH . '/src/Controller/StatsController.php'; // Dependency

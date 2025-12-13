@@ -6,22 +6,21 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // --- JWT Management ---
     async function initializeAuth() {
-        jwtToken = localStorage.getItem('darts_jwt');
-        if (!jwtToken) {
-            try {
-                const response = await fetch('index.php', { // No JWT needed for this specific call
-                    method: 'POST',
-                    headers: { 'X-Action': 'auth:getToken' }
-                });
-                const data = await response.json();
-                if (data.success && data.token) {
-                    jwtToken = data.token;
-                    localStorage.setItem('darts_jwt', jwtToken);
-                }
-            } catch (e) {
-                console.error("Could not fetch auth token.", e);
-                alert("Authentication failed. Please refresh.");
+        // Always fetch a new token on page load to prevent using an expired one.
+        localStorage.removeItem('darts_jwt');
+        try {
+            const response = await fetch('index.php', {
+                method: 'POST',
+                headers: { 'X-Action': 'auth:getToken' }
+            });
+            const data = await response.json();
+            if (data.success && data.token) {
+                jwtToken = data.token;
+                localStorage.setItem('darts_jwt', jwtToken);
             }
+        } catch (e) {
+            console.error("Could not fetch auth token.", e);
+            alert("Authentication failed. Please refresh.");
         }
     }
 

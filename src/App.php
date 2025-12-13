@@ -5,34 +5,38 @@ namespace Darts;
 use Darts\Controller\GameController;
 use Darts\Controller\SetupController;
 use Darts\Controller\StatsController;
+use Darts\Service\Logger;
 use Darts\Service\GameService;
 use Darts\Data\Storage;
 
 class App
 {
     private Storage $storage;
+    private Logger $logger;
     private array $routes = [];
 
-    public function __construct()
+    public function __construct(Logger $logger)
     {
         // Define a constant for the project root path.
         if (!defined('ROOT_PATH')) {
             define('ROOT_PATH', dirname(__DIR__));
         }
+        $this->logger = $logger;
 
-        $this->initialize();
+        $this->initialize($logger);
     }
 
-    private function initialize(): void
+    private function initialize(Logger $logger): void
     {
         // Dependency Injection Container (simple version)
         $this->storage = new Storage(ROOT_PATH);
-        $setupController = new SetupController($this->storage);
-        $statsController = new StatsController($this->storage);
+        // Pass the logger to the controllers that need it
+        $setupController = new SetupController($this->storage, $logger);
+        $statsController = new StatsController($this->storage, $logger);
 
         // Create the GameService and inject it into the GameController
         $gameService = new GameService();
-        $gameController = new GameController($gameService);
+        $gameController = new GameController($gameService, $logger);
 
         // Simple Router
         $this->routes = [

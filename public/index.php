@@ -2,6 +2,7 @@
 
 use Darts\App;
 
+use Darts\Service\Logger;
 // 1. Bootstrap the application
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -16,6 +17,7 @@ $action = $_SERVER['HTTP_X_ACTION'] ?? $_POST['action'] ?? $_GET['action'] ?? ''
 if ($action && $action !== 'auth:getToken') { // Every action except getting a token requires validation
     if (!preg_match('/Bearer\s(\S+)/', $_SERVER['HTTP_AUTHORIZATION'] ?? '', $matches)) {
         http_response_code(401);
+        $logger->warning('Authorization token not found in request.', ['action' => $action, 'ip' => $_SERVER['REMOTE_ADDR']]);
         die(json_encode(['success' => false, 'error' => 'Authorization token not found.']));
     }
 
@@ -25,6 +27,7 @@ if ($action && $action !== 'auth:getToken') { // Every action except getting a t
     try {
         JWT::decode($jwt, new Key($secretKey, 'HS256'));
     } catch (Exception $e) {
+        $logger->warning('Invalid JWT provided.', ['action' => $action, 'error' => $e->getMessage(), 'ip' => $_SERVER['REMOTE_ADDR']]);
         http_response_code(401);
         die(json_encode(['success' => false, 'error' => 'Invalid token: ' . $e->getMessage()]));
     }
@@ -34,7 +37,7 @@ if ($action && $action !== 'auth:getToken') { // Every action except getting a t
 if ($action) {
     ob_start(); // Start output buffering
     try {
-        $app = new App();
+        $app = new App($logger);
         $app->run($action);
     } catch (Exception $e) {
         // This will be caught by the global exception handler in bootstrap.php

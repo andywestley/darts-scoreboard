@@ -155,15 +155,30 @@ h1 {
 /* --- Game Screen Redesign --- */
 .game-container {
     display: grid;
-    grid-template-columns: 1fr 280px; /* Main content on left, leaderboard on right */
-    grid-template-rows: auto auto 1fr;
+    /* A more balanced 3-column layout */
+    grid-template-columns: 300px 1fr 280px; 
+    grid-template-rows: auto 1fr;
     gap: 20px;
     grid-template-areas:
-        "header header"
-        "player-display leaderboard"
-        "keypad leaderboard"
-        "chart chart";
+        "header header header"
+        "keypad player-display leaderboard"
+        "chart chart chart";
     max-width: 900px;
+}
+
+@media (max-width: 900px) {
+    .game-container {
+        grid-template-columns: 1fr; /* Switch to a single column */
+        grid-template-areas:
+            "header"
+            "player-display"
+            "keypad"
+            "leaderboard"
+            "chart";
+    }
+    .current-score-large {
+        font-size: 6em; /* Reduce font size slightly on mobile for better fit */
+    }
 }
 
 .game-container > header {
@@ -180,13 +195,13 @@ h1 {
 }
 
 .player-name-large {
-    font-size: 2.5em;
+    font-size: 3em;
     font-weight: bold;
     margin-bottom: 5px;
 }
 
 .current-score-large {
-    font-size: 6em;
+    font-size: 8em; /* Make the score even more prominent */
     font-weight: bold;
     line-height: 1;
     color: var(--accent-color);
@@ -250,12 +265,27 @@ h1 {
 }
 
 .dartboard-keypad {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.dartboard-keypad .modifiers,
+.dartboard-keypad .specials {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.dartboard-keypad .numbers {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
 }
 
 .keypad-container .input-display {
+    /* This is the score preview before submitting */
+    grid-column: 1 / -1; /* Span all columns in its grid context */
     background-color: var(--background-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -268,7 +298,7 @@ h1 {
 }
 
 .key {
-    padding: 20px 10px;
+    padding: 18px 10px;
     font-size: 1.5em;
     font-weight: bold;
     border-radius: 8px;
@@ -276,6 +306,7 @@ h1 {
     background-color: var(--card-bg);
     color: var(--text-color);
     cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .key:hover {
@@ -285,6 +316,16 @@ h1 {
 .key-mod.active {
     background-color: var(--accent-color);
     color: var(--primary-button-text);
+    border-color: var(--accent-color);
+}
+
+.key-bull {
+    background-color: #333;
+}
+
+.key-del {
+    background-color: #5c3b40; /* A subtle red tone */
+    border-color: #8c4b50;
 }
 
 .chart-container {
