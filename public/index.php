@@ -142,7 +142,11 @@ if ($action) {
         <div class="leaderboard" id="leaderboard"></div>
 
         <div class="controls keypad-container">
-            <div class="darts-thrown-display" id="dartsThrownDisplay"></div>
+            <div class="darts-thrown-display" id="dartsThrownDisplay">
+                <div class="dart-display-box" id="dart1Display">-</div>
+                <div class="dart-display-box" id="dart2Display">-</div>
+                <div class="dart-display-box" id="dart3Display">-</div>
+            </div>
             <div class="checkout-suggestion" id="checkoutHint"></div>
             <div class="dartboard-keypad">
                 <div class="modifiers">

@@ -108,8 +108,12 @@ window.DartsApp.initGameScreen = function(match) {
         }
 
         // Update the display of darts thrown in the current turn
-        const dartsDisplay = document.getElementById('dartsThrownDisplay');
-        dartsDisplay.innerText = currentTurnScores.length > 0 ? `Darts: ${currentTurnScores.map(d => d.score).join(', ')}` : '';
+        const dartnt.getElementById('dart2Display'),
+            document.getElementById('dart3Display'),
+        ];
+        dartDisplays.forEach((display, i) => {
+            display.innerText = currentTurnScores[i] ? currentTurnScores[i].score : '-';
+        });
 
         try {
             const leaderboardElement = document.getElementById('leaderboard');
