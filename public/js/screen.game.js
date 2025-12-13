@@ -10,7 +10,6 @@ window.DartsApp.initGameScreen = function(match) {
     const keypad = gameScreen.querySelector('.dartboard-keypad');
     const modDouble = document.getElementById('modDouble');
     const modTreble = document.getElementById('modTreble');
-    const inputDisplay = document.getElementById('inputDisplay');
     const undoBtn = document.getElementById('undoBtn');
     const nextLegBtn = document.getElementById('nextLegBtn');
     const submitTurnBtn = document.getElementById('submitTurnBtn');
@@ -176,11 +175,6 @@ window.DartsApp.initGameScreen = function(match) {
         modTreble.classList.toggle('active', currentThrow.multiplier === 3);
     }
 
-    function updateInputDisplay() {
-        const score = currentThrow.base ? (currentThrow.base * currentThrow.multiplier) : 0;
-        inputDisplay.innerText = score;
-    }
-
     async function submitTurn() {
         if (currentTurnScores.length === 0) return; // Don't submit an empty turn
 
@@ -193,7 +187,6 @@ window.DartsApp.initGameScreen = function(match) {
         currentTurnScores = [];
         currentThrow = { base: null, multiplier: 1 };
         updateMultiplierButtons();
-        updateInputDisplay();
 
         if (res.success) {
             const newMatchState = res.match;
@@ -233,13 +226,11 @@ window.DartsApp.initGameScreen = function(match) {
         modDouble.addEventListener('click', () => {
             currentThrow.multiplier = currentThrow.multiplier === 2 ? 1 : 2;
             updateMultiplierButtons();
-            updateInputDisplay();
         });
 
         modTreble.addEventListener('click', () => {
             currentThrow.multiplier = currentThrow.multiplier === 3 ? 1 : 3;
             updateMultiplierButtons();
-            updateInputDisplay();
         });
 
         keypad.addEventListener('click', (e) => {
@@ -261,7 +252,6 @@ window.DartsApp.initGameScreen = function(match) {
             // Reset for next dart entry
             currentThrow = { base: null, multiplier: 1 };
             updateMultiplierButtons();
-            updateInputDisplay();
             updateGameUI(previousMatchState); // Re-render to show darts thrown
 
             if (currentTurnScores.length === 3) {
