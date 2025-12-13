@@ -77,6 +77,11 @@ window.DartsApp.initGameScreen = function(match) {
     }
 
     function updateGameUI(match) {
+        if (options.skipLeaderboardRender) {
+            console.log('[updateGameUI] Skipping leaderboard render as requested by local override.');
+            return;
+        }
+
         console.log('%c[updateGameUI] Entry Point', 'color: green; font-weight: bold;', 'Rendering with match object:', match);
 
         if (!match || !match.players || !match.players.length) {
@@ -112,24 +117,43 @@ window.DartsApp.initGameScreen = function(match) {
             leaderboardElement.innerHTML = match.players.map((p, index) => {
                 const pTotalPoints = (match.gameType - p.score);
                 const pLegAvg = p.dartsThrown > 0 ? (pTotalPoints / p.dartsThrown * 3).toFixed(2) : '0.00';
-                
+                const maxTurns = Math.max(0, ...match.players.map(pl => pl.scores.length));
+
+                // Get this player's turns from the main history to find out what was thrown each turn.
+                const playerHistory = match.history.filter(turn => turn.playerIndex === index);
+
                 // Generate the score history table for each player
-                const scoreHistoryHtml = p.scores && p.scores.length > 0
-                    ? `<table class="player-card__score-history">
-                        ${p.scores.map((score, i) => `<tr><td>Turn ${i + 1}</td><td>${score}</td></tr>`).join('')}
-                       </table>`
-                    : '';
+                let scoreHistoryHtml = '<p style="text-align: center; color: var(--text-color-secondary); font-size: 0.9em;">No turns yet.</p>';
+                if (maxTurns > 0) {
+                    let tableRows = '';
+                    for (let i = 0; i < maxTurns; i++) {
+                        const remainingScore = p.scores[i];
+                        const turnData = playerHistory[i];
+
+                        if (turnData !== undefined && remainingScore !== undefined) {
+                            const scoreThrown = turnData.isBust ? 'BUST' : turnData.scoreThrown;
+                            tableRows += `<tr><td>${i + 1}</td><td>${scoreThrown}</td><td>${remainingScore}</td></tr>`;
+                        } else {
+                            // Add a placeholder row for turns not yet taken by this player
+                            tableRows += `<tr><td>${i + 1}</td><td>-</td><td>-</td></tr>`;
+                        }
+                    }
+                    scoreHistoryHtml = `<table class="player-card__score-history">
+                        <thead><tr><th>Turn</th><th>Thrown</th><th>Left</th></tr></thead>
+                        <tbody>${tableRows}</tbody>
+                       </table>`;
+                }
 
                 return `
-                    <div class="player-card ${index === match.currentPlayerIndex ? 'player-card--active' : ''}">
-                        <div class="player-card__header">
+                    <div class="player-column">
+                        <div class="player-card player-card--header ${index === match.currentPlayerIndex ? 'active' : ''}">
                             <div>
                                 <div class="player-card__name">${p.name}</div>
                                 <div class="player-card__avg">Avg: ${pLegAvg}</div>
                             </div>
                             <div class="player-card__score">${p.score}</div>
                         </div>
-                        ${scoreHistoryHtml}
+                        <div class="player-card player-card--history">${scoreHistoryHtml}</div>
                     </div>
                 `;
             }).join('');

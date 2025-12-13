@@ -156,14 +156,13 @@ h1 {
 .screen.game-container.active {
     display: grid;
     /* A more balanced 3-column layout */
-    grid-template-columns: 320px 1fr; 
-    grid-template-rows: auto 1fr;
+    grid-template-columns: 320px 1fr; /* Fixed width for keypad, flexible for leaderboard */
+    grid-template-rows: auto 1fr auto; /* Header, main content, chart */
     gap: 20px;
     grid-template-areas:
-        "header header header"
-        "leaderboard leaderboard leaderboard"
-        "keypad chart"
-        "chart chart chart";
+        "header header"
+        "keypad leaderboard"
+        "chart chart";
     max-width: 900px;
 }
 
@@ -201,6 +200,18 @@ h1 {
     gap: 10px;
 }
 
+.player-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.player-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .player-card {
     background-color: var(--card-bg);
     padding: 15px;
@@ -212,19 +223,20 @@ h1 {
 }
 
 .player-card--active {
-    border-color: var(--active-player-bg);
+    /* The main card is no longer highlighted directly. */
+}
+
+.player-card--header.active {
+    border: 2px solid var(--active-player-bg);
 }
 
 .player-card__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%;
-}
-
-.player-card__name {
-    font-size: 1.2em;
-    font-weight: bold;
+    padding: 10px;
+    border: 2px solid transparent; /* Add a transparent border to prevent layout shift on active */
+    transition: border-color 0.3s;
 }
 
 .player-card__score {
@@ -246,10 +258,21 @@ h1 {
     border-collapse: collapse;
 }
 
+.player-card--history {
+    flex-grow: 1; /* Allow the history card to grow to fill available space */
+    display: flex; /* This is the key fix: Make this a flex container to control its child table */
+    padding: 5px 15px;
+}
+
 .player-card__score-history td {
     padding: 4px 8px;
     border-top: 1px solid var(--border-color);
     text-align: right;
+}
+
+.player-card__score-history thead {
+    font-weight: bold;
+    color: var(--text-color);
 }
 
 .keypad-container {
@@ -270,9 +293,26 @@ h1 {
 }
 
 .dartboard-keypad .specials {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Default to 2 columns */
+    display: flex;
+    flex-direction: column;
     gap: 10px;
+}
+
+.specials-row {
+    display: grid;
+    gap: 10px;
+}
+
+.specials-row:first-child {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.specials-row:last-child {
+    grid-template-columns: repeat(2, 1fr);
+}
+.specials-row .key {
+    font-size: 1.1em;
+    padding: 18px 5px;
 }
 
 .dartboard-keypad .numbers {
@@ -293,6 +333,12 @@ h1 {
     text-align: right;
     margin-bottom: 15px;
     color: var(--accent-color);
+}
+
+.controls.keypad-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 .key {
