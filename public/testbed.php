@@ -9,18 +9,12 @@ require_once __DIR__ . '/../bootstrap.php';
 // Use the service classes we want to test directly.
 use Darts\Service\GameService;
 
-function run_diagnostics() {
-    global $logger; // Access the logger initialized in bootstrap.php
-
-    $report = [
-        'environment'   => [],
-        'permissions'   => [],
-        'service_tests' => [],
-        'api'           => [],
-        'logging'       => [],
-    ];
-
-    // --- Test 0: PHP Environment ---
+/**
+ * Runs tests for the PHP environment, version, and required extensions.
+ * @return array The results of the environment tests.
+ */
+function run_environment_tests(): array
+{
     $envResults = [];
     $requiredPhpVersion = '7.4'; // A sensible modern requirement.
     $currentPhpVersion = PHP_VERSION;
@@ -39,9 +33,15 @@ function run_diagnostics() {
             $envResults[] = ['FAIL', "Required extension '{$ext}' is NOT loaded."];
         }
     }
-    $report['environment'] = $envResults;
+    return $envResults;
+}
 
-    // --- Test 1: File System Permissions ---
+/**
+ * Runs tests for file system permissions in the /data directory.
+ * @return array The results of the permissions tests.
+ */
+function run_permissions_tests(): array
+{
     $dataDir = __DIR__ . '/../data';
     $testFile = $dataDir . '/permission_test.tmp';
     $testContent = 'write_test_' . time();
@@ -58,9 +58,16 @@ function run_diagnostics() {
     } else {
         $permResults[] = ['FAIL', 'Failed to write to test file.', $testFile];
     }
-    $report['permissions'] = $permResults;
+    return $permResults;
+}
 
-    // --- NEW: Backend Service Tests (from c:\testbed.php) ---
+/**
+ * Runs unit-style tests for the backend services like Logger and GameService.
+ * @param \Darts\Service\Logger $logger The application's logger instance.
+ * @return array The results of the service tests.
+ */
+function run_service_tests(\Darts\Service\Logger $logger): array
+{
     $serviceResults = [];
 
     // Test 1: Logger Functionality
@@ -155,11 +162,15 @@ function run_diagnostics() {
         $finalScore = $updatedInvalidMatch['players'][0]['score'] ?? 'N/A';
         $serviceResults[] = ['FAIL', "GameService Invalid Checkout Test: Player score was {$finalScore}, but should have reverted to 30."];
     }
+    return $serviceResults;
+}
 
-    $report['service_tests'] = $serviceResults;
-
-
-    // --- Test 2: API Endpoint Execution ---
+/**
+ * Runs integration tests against the live API endpoints.
+ * @return array The results of the API tests.
+ */
+function run_api_tests(): array
+{
     // With a stateless JWT architecture, we first need to fetch a token.
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/index.php';
@@ -180,7 +191,7 @@ function run_diagnostics() {
         $jwtToken = $authData['token'];
     } else {
         // If we can't get a token, we can't run the tests. Return a structured error.
-        $report['api'] = [[
+        return [[
             'test' => ['action' => 'auth:getToken', 'method' => 'POST'],
             'status_code' => $authStatusCode ?: 500,
             'response_body' => 'Failed to retrieve a valid JWT to run tests. Response: ' . $authResponse,
@@ -190,7 +201,6 @@ function run_diagnostics() {
             'curl_error_num' => curl_errno($authCh),
             'curl_error_msg' => curl_error($authCh),
         ]];
-        return $report;
     }
 
     $playersDataFile = __DIR__ . '/../data/players.json';
@@ -373,9 +383,51 @@ function run_diagnostics() {
         $apiResults[] = ['test' => $scoreTest, 'status_code' => $statusCode, 'players_before' => 'N/A', 'players_after' => 'N/A', 'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'), 'post_data_sent' => $scoreTest['data'], 'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8')];
     }
 
-    $report['api'] = $apiResults;
+    // Dynamically add a 'game:nextLeg' test if a leg was just won.
+    // We need to find the response from the valid checkout test.
+    $legWonMatchState = null;
+    foreach ($apiResults as $result) {
+        if (($result['test']['action'] ?? '') === 'game:score (Valid Checkout)') {
+            $body = json_decode($result['response_body'], true);
+            if ($body['success'] && isset($body['match'])) {
+                $legWonMatchState = $body['match'];
+                break;
+            }
+        }
+    }
 
-    // --- Test 3: PHP Error Logging ---
+    if ($legWonMatchState && !($legWonMatchState['isOver'] ?? false)) {
+        $nextLegTest = [
+            'action' => 'game:nextLeg',
+            'method' => 'POST',
+            'data' => ['matchState' => json_encode($legWonMatchState)]
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $baseUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: ' . $nextLegTest['action'], 'Authorization: Bearer ' . $jwtToken]);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($nextLegTest['data']));
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+
+        $apiResults[] = ['test' => $nextLegTest, 'status_code' => $statusCode, 'players_before' => 'N/A', 'players_after' => 'N/A', 'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'), 'post_data_sent' => $nextLegTest['data'], 'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8')];
+    }
+
+    return $apiResults;
+}
+
+/**
+ * Runs tests to ensure PHP error logging is configured and working correctly.
+ * @return array The results of the logging tests.
+ */
+function run_logging_tests(): array
+{
     $logFile = '/var/www/vhosts/andrewwestley.co.uk/dartboard.andrewwestley.co.uk/logs/php_errors.log';
     $logResults = [];
     $logDir = dirname($logFile);
@@ -419,9 +471,24 @@ function run_diagnostics() {
     } else {
         $logResults[] = ['FAIL', "Log directory does not exist.", $logDir];
     }
-    $report['logging'] = $logResults;
+    return $logResults;
+}
 
-    return $report;
+/**
+ * Main diagnostic runner. Orchestrates all test suites.
+ * @return array The complete report data.
+ */
+function run_diagnostics(): array
+{
+    global $logger; // Access the logger initialized in bootstrap.php
+
+    return [
+        'environment'   => run_environment_tests(),
+        'permissions'   => run_permissions_tests(),
+        'service_tests' => run_service_tests($logger),
+        'api'           => run_api_tests(),
+        'logging'       => run_logging_tests(),
+    ];
 }
 
 $reportData = run_diagnostics();
