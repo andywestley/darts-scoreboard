@@ -92,22 +92,7 @@ window.DartsApp.initGameScreen = function(match) {
         const matchScore = match.players.map(p => `${p.name.split(' ')[0]} (${p.legsWon})`).join(' - ');
         document.getElementById('legDisplay').innerText = `Leg ${match.currentLeg} | ${matchScore}`;
 
-        document.getElementById('activeName').innerText = player.name;
-        document.getElementById('activeScore').innerText = player.score;
-        const totalPointsScored = (match.gameType - player.score);
-        const legAvg = player.dartsThrown > 0 ? (totalPointsScored / player.dartsThrown * 3).toFixed(2) : '0.00';
-        document.getElementById('activeAvg').innerText = `Avg: ${legAvg}`;
-
         try {
-            const scoreHistoryContainer = document.getElementById('activeScoreHistory');
-            scoreHistoryContainer.innerHTML = ''; // Clear previous history
-            if (player.scores && player.scores.length > 0) {
-                player.scores.forEach(score => {
-                    const scoreEl = document.createElement('span');
-                    scoreEl.textContent = score;
-                    scoreHistoryContainer.appendChild(scoreEl);
-                });
-            }
             if (match.checkoutAssistant) {
                 document.getElementById('checkoutHint').innerText = getCheckoutGuide(player.score);
             } else {
@@ -127,14 +112,24 @@ window.DartsApp.initGameScreen = function(match) {
             leaderboardElement.innerHTML = match.players.map((p, index) => {
                 const pTotalPoints = (match.gameType - p.score);
                 const pLegAvg = p.dartsThrown > 0 ? (pTotalPoints / p.dartsThrown * 3).toFixed(2) : '0.00';
-                // Get the last 5 scores for the mini-history
-                const scoreHistory = p.scores ? p.scores.slice(-5).join(' → ') : '';
+                
+                // Generate the score history table for each player
+                const scoreHistoryHtml = p.scores && p.scores.length > 0
+                    ? `<table class="player-card__score-history">
+                        ${p.scores.map((score, i) => `<tr><td>Turn ${i + 1}</td><td>${score}</td></tr>`).join('')}
+                       </table>`
+                    : '';
 
                 return `
                     <div class="player-card ${index === match.currentPlayerIndex ? 'player-card--active' : ''}">
-                        <span class="player-card__name">${p.name}</span>
-                        <span class="player-card__score">${p.score}</span>
-                        <span class="player-card__avg">Avg: ${pLegAvg}</span>
+                        <div class="player-card__header">
+                            <div>
+                                <div class="player-card__name">${p.name}</div>
+                                <div class="player-card__avg">Avg: ${pLegAvg}</div>
+                            </div>
+                            <div class="player-card__score">${p.score}</div>
+                        </div>
+                        ${scoreHistoryHtml}
                     </div>
                 `;
             }).join('');

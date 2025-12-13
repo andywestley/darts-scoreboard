@@ -139,21 +139,12 @@ if ($action) {
             <span id="legDisplay" class="header-title"></span>
         </header>
 
-        <div class="player-display">
-            <div class="player-name-large" id="activeName"></div>
-            <div class="current-score-large" id="activeScore"></div>
-            <div class="player-card__score-history" id="activeScoreHistory">
-                <!-- Player's running score history will be rendered here -->
-            </div>
-            <div class="stats-badge" id="activeAvg"></div>
-            <div class="checkout-suggestion" id="checkoutHint"></div>
-        </div>
-
         <div class="leaderboard" id="leaderboard"></div>
 
         <div class="controls keypad-container">
             <div class="darts-thrown-display" id="dartsThrownDisplay"></div>
             <div class="input-display" id="inputDisplay">0</div>
+            <div class="checkout-suggestion" id="checkoutHint"></div>
             <div class="dartboard-keypad">
                 <div class="modifiers">
                     <button class="key key-mod" id="modDouble">Double</button>

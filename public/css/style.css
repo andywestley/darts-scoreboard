@@ -156,12 +156,13 @@ h1 {
 .screen.game-container.active {
     display: grid;
     /* A more balanced 3-column layout */
-    grid-template-columns: 300px 1fr 280px; 
+    grid-template-columns: 320px 1fr; 
     grid-template-rows: auto 1fr;
     gap: 20px;
     grid-template-areas:
         "header header header"
-        "keypad player-display leaderboard"
+        "leaderboard leaderboard leaderboard"
+        "keypad chart"
         "chart chart chart";
     max-width: 900px;
 }
@@ -171,7 +172,6 @@ h1 {
         grid-template-columns: 1fr; /* Switch to a single column */
         grid-template-areas:
             "header"
-            "player-display"
             "keypad"
             "leaderboard"
             "chart";
@@ -185,45 +185,19 @@ h1 {
     grid-area: header;
 }
 
-.player-display {
-    grid-area: player-display;
-    background-color: var(--card-bg);
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-    border-left: 5px solid var(--active-player-bg);
-}
-
-.player-name-large {
-    font-size: 3em;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.current-score-large {
-    font-size: 8em; /* Make the score even more prominent */
-    font-weight: bold;
-    line-height: 1;
-    color: var(--accent-color);
-}
-
-.stats-badge {
-    margin-top: 10px;
-    font-size: 1em;
-    color: var(--text-color-secondary);
-}
-
 .checkout-suggestion {
     margin-top: 15px;
     font-size: 1.2em;
     font-weight: bold;
     min-height: 25px; /* Reserve space */
+    text-align: center;
 }
 
 .leaderboard {
     grid-area: leaderboard;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     gap: 10px;
 }
 
@@ -231,9 +205,8 @@ h1 {
     background-color: var(--card-bg);
     padding: 15px;
     border-radius: 8px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
     border: 2px solid transparent;
     transition: border-color 0.3s;
 }
@@ -242,22 +215,41 @@ h1 {
     border-color: var(--active-player-bg);
 }
 
+.player-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
 .player-card__name {
     font-size: 1.2em;
     font-weight: bold;
 }
 
 .player-card__score {
-    font-size: 2em;
+    font-size: 2.5em;
     font-weight: bold;
-    grid-column: 2;
-    grid-row: 1 / span 2;
     color: var(--accent-color);
 }
 
 .player-card__avg {
     font-size: 0.9em;
     color: var(--text-color-secondary);
+}
+
+.player-card__score-history {
+    width: 100%;
+    margin-top: 15px;
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+    border-collapse: collapse;
+}
+
+.player-card__score-history td {
+    padding: 4px 8px;
+    border-top: 1px solid var(--border-color);
+    text-align: right;
 }
 
 .keypad-container {
@@ -345,25 +337,6 @@ h1 {
     padding: 10px;
     border-radius: 8px;
     min-height: 300px;
-}
-
-.player-card__score-history {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-height: 100px; /* Limit height */
-    overflow-y: auto; /* Allow scrolling for long legs */
-    margin-top: 10px;
-    font-size: 1em;
-    color: var(--text-color-secondary);
-}
-
-.player-card__score-history span {
-    line-height: 1.4;
-}
-
-.player-card__score-history span:last-child {
-    font-weight: bold;
 }
 
 /* Accessibility helper class for visually-hidden labels */
