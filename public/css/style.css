@@ -153,7 +153,7 @@ h1 {
 }
 
 /* --- Game Screen Redesign --- */
-.game-container {
+.screen.game-container.active {
     display: grid;
     /* A more balanced 3-column layout */
     grid-template-columns: 300px 1fr 280px; 
@@ -167,7 +167,7 @@ h1 {
 }
 
 @media (max-width: 900px) {
-    .game-container {
+    .screen.game-container.active {
         grid-template-columns: 1fr; /* Switch to a single column */
         grid-template-areas:
             "header"
