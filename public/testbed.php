@@ -3,12 +3,21 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// Bootstrap the main application to gain access to services and the logger.
+require_once __DIR__ . '/../bootstrap.php';
+
+// Use the service classes we want to test directly.
+use Darts\Service\GameService;
+
 function run_diagnostics() {
+    global $logger; // Access the logger initialized in bootstrap.php
+
     $report = [
-        'environment' => [],
-        'permissions' => [],
-        'api'         => [],
-        'logging'     => [],
+        'environment'   => [],
+        'permissions'   => [],
+        'service_tests' => [],
+        'api'           => [],
+        'logging'       => [],
     ];
 
     // --- Test 0: PHP Environment ---
@@ -50,6 +59,47 @@ function run_diagnostics() {
         $permResults[] = ['FAIL', 'Failed to write to test file.', $testFile];
     }
     $report['permissions'] = $permResults;
+
+    // --- NEW: Backend Service Tests (from c:\testbed.php) ---
+    $serviceResults = [];
+
+    // Test 1: Logger Functionality
+    $logFile = ROOT_PATH . '/logs/app_log.txt';
+    if (file_exists($logFile)) {
+        unlink($logFile); // Clear log for a clean test run
+    }
+    $logger->info("This is an info message from the service test.");
+    $logger->error("This is an error message from the service test.", ['test_case' => 'Logger']);
+    $logContents = file_get_contents($logFile);
+
+    if (str_contains($logContents, '] [INFO] This is an info message') && str_contains($logContents, '] [ERROR] This is an error message')) {
+        $serviceResults[] = ['PASS', 'Logger Service Test: Messages were written and verified successfully.'];
+    } else {
+        $serviceResults[] = ['FAIL', 'Logger Service Test: Verification failed. Messages not found in log file.'];
+    }
+
+    // Test 2: GameService Bust Logic
+    $gameService = new GameService();
+    $initialMatch = [
+        'currentPlayerIndex' => 0,
+        'players' => [['name' => 'Player 1', 'score' => 50, 'dartsThrown' => 0, 'legsWon' => 0]],
+        'history' => [],
+        'gameType' => 501,
+        'matchLegs' => 3,
+        'currentLeg' => 1,
+    ];
+    $updatedMatch = $gameService->applyScore($initialMatch, 60, true, false); // Score 60 on 50 is a bust
+
+    // A bust means the score should NOT change.
+    if (isset($updatedMatch['players'][0]['score']) && $updatedMatch['players'][0]['score'] === 50) {
+        $serviceResults[] = ['PASS', 'GameService Bust Logic Test: Player score correctly remained unchanged after a bust.'];
+    } else {
+        $finalScore = $updatedMatch['players'][0]['score'] ?? 'N/A';
+        $serviceResults[] = ['FAIL', "GameService Bust Logic Test: Player score changed to {$finalScore} after a bust, but should have remained 50."];
+    }
+
+    $report['service_tests'] = $serviceResults;
+
 
     // --- Test 2: API Endpoint Execution ---
     // With a stateless JWT architecture, we first need to fetch a token.
@@ -285,6 +335,16 @@ $reportData = run_diagnostics();
                     <?php endforeach; ?>
                 </table>
 
+                <h2>2. Backend Service Tests</h2>
+                <table>
+                    <?php foreach ($reportData['service_tests'] as $result): ?>
+                        <tr>
+                            <td class="status status-<?php echo strtolower($result[0]); ?>"><?php echo $result[0]; ?></td>
+                            <td><?php echo htmlspecialchars($result[1]); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+
                 <h2>3. PHP Error Logging</h2>
                 <table>
                     <?php foreach ($reportData['logging'] as $result): ?>
@@ -296,7 +356,7 @@ $reportData = run_diagnostics();
                     <?php endforeach; ?>
                 </table>
 
-                <h2>2. API Endpoint Tests</h2>
+                <h2>4. API Endpoint Tests</h2>
                 <table>
                     <tr><th>Action</th><th>Method</th><th>Status Code</th><th>Details</th></tr>
                     <?php foreach ($reportData['api'] as $result): ?>

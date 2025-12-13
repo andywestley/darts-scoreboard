@@ -13,7 +13,7 @@ if (!defined('ROOT_PATH')) {
 
 // Manually include the Logger class so it can be used immediately.
 require_once ROOT_PATH . '/src/Service/Logger.php';
-$logger = new Logger(ROOT_PATH . '/app_log.txt', Logger::INFO);
+$logger = new Logger(ROOT_PATH . '/logs/app_log.txt', Logger::DEBUG);
 
 set_exception_handler(function ($exception) {
     global $logger; // Make the logger available in this scope
