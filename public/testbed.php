@@ -79,7 +79,7 @@ function run_diagnostics() {
     }
 
     // Test 2: GameService Bust Logic
-    $gameService = new GameService();
+    $gameService = new GameService($logger);
     $initialMatch = [
         'currentPlayerIndex' => 0,
         'players' => [['name' => 'Player 1', 'score' => 50, 'dartsThrown' => 0, 'legsWon' => 0]],

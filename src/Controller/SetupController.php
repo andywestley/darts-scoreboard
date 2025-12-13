@@ -3,15 +3,18 @@
 namespace Darts\Controller;
 
 use Darts\Data\Storage;
+use Darts\Service\Logger;
 
 class SetupController
 {
     private Storage $storage;
+    private Logger $logger;
 
-    public function __construct(Storage $storage)
+    public function __construct(Storage $storage, Logger $logger)
     {
         // The Storage dependency is now properly injected.
         $this->storage = $storage;
+        $this->logger = $logger;
     }
 
     public function getAnonymousToken(): void
@@ -42,6 +45,7 @@ class SetupController
 
         if ($this->storage->getPlayerByName($playerName) === null) {
             $this->storage->addPlayer($playerName);
+            $this->logger->info('New player persisted to master list.', ['playerName' => $playerName]);
         }
 
         $this->jsonResponse(['success' => true]);
@@ -75,8 +79,8 @@ class SetupController
             'standings' => [],
         ];
 
-        // --- DEBUGGING: Log the created match object to a file ---
-        file_put_contents(ROOT_PATH . '/debug_log.txt', "--- " . date('c') . " ---\n" . print_r($match, true) . "\n", FILE_APPEND);
+        // Log the created match object for debugging.
+        $this->logger->debug('New game started.', ['match' => $match]);
 
         $this->jsonResponse(['success' => true, 'match' => $match]);
     }

@@ -2,12 +2,21 @@
 
 namespace Darts\Service;
 
+use Darts\Service\Logger;
+
 /**
  * GameService contains the pure business logic for the darts game.
  * It is completely decoupled from HTTP requests and sessions, making it easy to unit test.
  */
 class GameService
 {
+    private Logger $logger;
+
+    public function __construct(Logger $logger)
+    {
+        $this->logger = $logger;
+    }
+
     /**
      * Applies a player's score to the match state.
      *
@@ -19,6 +28,8 @@ class GameService
      */
     public function applyScore(array $match, int $score, bool $isBust, bool $isCheckout): array
     {
+        $this->logger->info('Applying score', ['score' => $score, 'isBust' => $isBust, 'isCheckout' => $isCheckout]);
+
         $playerIndex = $match['currentPlayerIndex'];
         $player = &$match['players'][$playerIndex]; // Use reference to modify directly
 
@@ -39,6 +50,7 @@ class GameService
             $player['dartsThrown'] += 3; // Assume 3 darts per turn for now
 
             if ($isCheckout && $player['score'] === 0) {
+                $this->logger->info('Player has checked out, processing leg win.');
                 return $this->processLegWin($match, $playerIndex);
             }
         }
@@ -58,6 +70,8 @@ class GameService
      */
     private function processLegWin(array $match, int $winningPlayerIndex): array
     {
+        $this->logger->info('Processing leg win for player index', ['playerIndex' => $winningPlayerIndex]);
+
         $match['players'][$winningPlayerIndex]['legsWon']++;
 
         // Check for match win
@@ -65,6 +79,7 @@ class GameService
             $match['isOver'] = true;
             $match['winnerName'] = $match['players'][$winningPlayerIndex]['name'];
             $match['standings'] = $this->calculateFinalStandings($match);
+            $this->logger->info('Match has been won', ['winner' => $match['winnerName']]);
         }
 
         return $match;
@@ -78,6 +93,8 @@ class GameService
      */
     public function startNextLeg(array $match): array
     {
+        $this->logger->info('Starting next leg', ['currentLeg' => $match['currentLeg'] + 1]);
+
         $match['currentLeg']++;
         // Reset scores for all players
         foreach ($match['players'] as &$player) {

@@ -3,6 +3,7 @@
 namespace Darts\Controller;
 
 use Darts\Service\GameService;
+use Darts\Service\Logger;
 
 /**
  * GameController handles the HTTP layer for game actions.
@@ -11,10 +12,12 @@ use Darts\Service\GameService;
 class GameController
 {
     private GameService $gameService;
+    private Logger $logger;
 
-    public function __construct(GameService $gameService)
+    public function __construct(GameService $gameService, Logger $logger)
     {
         $this->gameService = $gameService;
+        $this->logger = $logger;
     }
 
     /**
@@ -34,6 +37,8 @@ class GameController
     public function score(): void
     {
         $matchState = json_decode($_POST['matchState'] ?? 'null', true);
+        $this->logger->info('Received game:score action.', ['matchId' => $matchState['id'] ?? 'N/A']);
+
         if (!$matchState) {
             $this->jsonResponse(['success' => false, 'message' => 'Invalid match state provided.']);
             return;
@@ -54,6 +59,8 @@ class GameController
     public function nextLeg(): void
     {
         $matchState = json_decode($_POST['matchState'] ?? 'null', true);
+        $this->logger->info('Received game:nextLeg action.', ['matchId' => $matchState['id'] ?? 'N/A']);
+
         if (!$matchState) {
             $this->jsonResponse(['success' => false, 'message' => 'Invalid match state provided.']);
             return;

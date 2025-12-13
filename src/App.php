@@ -29,13 +29,13 @@ class App
     private function initialize(Logger $logger): void
     {
         // Dependency Injection Container (simple version)
-        $this->storage = new Storage(ROOT_PATH);
+        $this->storage = new Storage(ROOT_PATH, $logger);
         // Pass the logger to the controllers that need it
         $setupController = new SetupController($this->storage, $logger);
         $statsController = new StatsController($this->storage, $logger);
 
         // Create the GameService and inject it into the GameController
-        $gameService = new GameService();
+        $gameService = new GameService($logger);
         $gameController = new GameController($gameService, $logger);
 
         // Simple Router

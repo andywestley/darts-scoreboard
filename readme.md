@@ -59,6 +59,25 @@ This project intentionally avoids Composer. The `php-jwt` library and all intern
 > **Solution:** All core game logic is encapsulated in a pure `GameService.php` class, which is decoupled from HTTP requests. Controllers (`GameController.php`) are thin layers that receive the state from the client, pass it to the `GameService`, and return the result. This makes the logic predictable and easy to test. Client-side validation provides immediate user feedback, while the backend performs the authoritative state transition.
 
 ### Project Structure
+
+### Logging
+The application includes a robust, PSR-3 inspired logging service (`src/Service/Logger.php`) to provide detailed insight into the application's behavior and for easier debugging.
+
+*   **Centralized Logging:** All application-level events, from API requests to data migrations, are logged to a single file: `logs/app_log.txt`. This keeps application diagnostics separate from the web server's general error logs.
+*   **Log Levels:** The logger supports multiple severity levels (`DEBUG`, `INFO`, 'WARNING', `ERROR`). The minimum level to be recorded is configured in `bootstrap.php`, allowing you to easily switch between verbose logging for development and quieter logging for production.
+*   **Structured Context:** The logger allows for a context array to be passed with any message, providing structured, machine-readable data alongside the human-readable message.
+
+**Example Usage:**
+```php
+// In any controller or service where the logger is injected:
+$this->logger->info('Player score updated.', [
+    'player' => 'Player 1',
+    'new_score' => 401,
+    'thrown' => 100
+]);
+```
+This will produce a log entry similar to: `[2025-12-13T18:13:44+00:00] [INFO] Player score updated. {"player":"Player 1","new_score":401,"thrown":100}`
+
 The project follows a modern PHP application structure with a public document root for enhanced security:
 *   `public/`: The web server's document root.
     *   `index.php`: The main entry point that renders the HTML shell.
