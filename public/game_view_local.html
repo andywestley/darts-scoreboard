@@ -183,50 +183,35 @@
                 matchLegs: 3,
                 checkoutAssistant: true,
                 soundEffects: true,
-                // --- CORRECTED MOCK DATA FOR 4 PLAYERS ---
+                // --- REGENERATED MOCK DATA FOR 2 PLAYERS ---
                 players: [
                     {
                         name: 'Player 1',
-                        score: 261,
-                        dartsThrown: 6,
+                        score: 180,
+                        dartsThrown: 9,
                         legsWon: 0,
-                        scores: [401, 261] // After turn 1, after turn 2
+                        scores: [401, 261, 180]
                     },
                     {
                         name: 'Player 2',
                         score: 346,
                         dartsThrown: 6,
                         legsWon: 0,
-                        scores: [441, 346] // After turn 1, after turn 2
-                    },
-                    {
-                        name: 'Player 3',
-                        score: 416,
-                        dartsThrown: 3,
-                        legsWon: 0,
-                        scores: [416] // After turn 1
-                    },
-                    {
-                        name: 'Player 4',
-                        score: 460,
-                        dartsThrown: 3,
-                        legsWon: 0,
-                        scores: [460] // After turn 1
+                        scores: [441, 346]
                     }
                 ],
-                currentPlayerIndex: 2, // Player 3 is the active player
+                currentPlayerIndex: 1, // Player 2 is the active player
                 currentLeg: 1,
                 isOver: false,
                 winnerName: null,
                 // The history array tracks the score thrown each turn.
-                // This now correctly matches the players' scores arrays.
+                // This now correctly matches the 2-player game state.
                 history: [
-                    { playerIndex: 0, scoreThrown: 100, isBust: false }, // P1's 1st turn
-                    { playerIndex: 1, scoreThrown: 60, isBust: false },  // P2's 1st turn
-                    { playerIndex: 2, scoreThrown: 85, isBust: false },  // P3's 1st turn
-                    { playerIndex: 3, scoreThrown: 41, isBust: false },  // P4's 1st turn
-                    { playerIndex: 0, scoreThrown: 140, isBust: false }, // P1's 2nd turn
-                    { playerIndex: 1, scoreThrown: 95, isBust: false },  // P2's 2nd turn
+                    { playerIndex: 0, scoreThrown: 100, isBust: false },
+                    { playerIndex: 1, scoreThrown: 60, isBust: false },
+                    { playerIndex: 0, scoreThrown: 140, isBust: false },
+                    { playerIndex: 1, scoreThrown: 95, isBust: false },
+                    { playerIndex: 0, scoreThrown: 81, isBust: false },
                 ],
                 standings: [],
             };

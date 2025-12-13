@@ -76,7 +76,7 @@ window.DartsApp.initGameScreen = function(match) {
         winModal.style.display = 'flex';
     }
 
-    function updateGameUI(match) {
+    function updateGameUI(match, options = {}) {
         if (options.skipLeaderboardRender) {
             console.log('[updateGameUI] Skipping leaderboard render as requested by local override.');
             return;
