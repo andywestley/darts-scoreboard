@@ -165,6 +165,153 @@ function run_service_tests(\Darts\Service\Logger $logger): array
     return $serviceResults;
 }
 
+class ApiTestRunner
+{
+    private string $baseUrl;
+    private string $jwtToken;
+    private ?array $currentMatchState = null;
+    private array $results = [];
+
+    public function __construct(string $baseUrl, string $jwtToken)
+    {
+        $this->baseUrl = $baseUrl;
+        $this->jwtToken = $jwtToken;
+    }
+
+    public function run(): array
+    {
+        $this->runInitialSequence();
+        $this->runScoringTests();
+        $this->runNextLegTest();
+
+        return $this->results;
+    }
+
+    private function runInitialSequence(): void
+    {
+        $initialTests = [
+            ['action' => 'player:persist', 'method' => 'POST', 'data' => ['playerName' => 'Test Player A']],
+            ['action' => 'player:persist', 'method' => 'POST', 'data' => ['playerName' => 'Test Player B']],
+            [
+                'action' => 'game:start',
+                'method' => 'POST',
+                'data' => [
+                    'players' => json_encode(['Test Player A', 'Test Player B']),
+                    'gameType' => '301'
+                ]
+            ],
+        ];
+
+        foreach ($initialTests as $test) {
+            $this->executeApiCall($test['action'], $test['method'], $test['data']);
+        }
+    }
+
+    private function runScoringTests(): void
+    {
+        if (!$this->currentMatchState) {
+            return;
+        }
+
+        // Standard Score Test
+        $this->executeApiCall(
+            'game:score',
+            'POST',
+            ['darts' => json_encode([60, 20, 5])]
+        );
+
+        // Valid Checkout Test
+        $validCheckoutState = $this->currentMatchState;
+        $validCheckoutState['players'][0]['score'] = 40;
+        $this->executeApiCall(
+            'game:score (Valid Checkout)',
+            'POST',
+            [
+                'darts' => json_encode([['score' => 40, 'multiplier' => 2, 'base' => 20]]),
+                'matchState' => json_encode($validCheckoutState)
+            ]
+        );
+
+        // Invalid Checkout Test
+        $invalidCheckoutState = $this->currentMatchState;
+        $invalidCheckoutState['players'][0]['score'] = 20;
+        $this->executeApiCall(
+            'game:score (Invalid Checkout)',
+            'POST',
+            [
+                'darts' => json_encode([['score' => 20, 'multiplier' => 1, 'base' => 20]]),
+                'matchState' => json_encode($invalidCheckoutState)
+            ]
+        );
+    }
+
+    private function runNextLegTest(): void
+    {
+        $legWonMatchState = null;
+        foreach ($this->results as $result) {
+            if (($result['test']['action'] ?? '') === 'game:score (Valid Checkout)') {
+                $body = json_decode($result['response_body'], true);
+                if ($body['success'] && isset($body['match']) && !($body['match']['isOver'] ?? false)) {
+                    $legWonMatchState = $body['match'];
+                    break;
+                }
+            }
+        }
+
+        if ($legWonMatchState) {
+            $this->executeApiCall(
+                'game:nextLeg',
+                'POST',
+                ['matchState' => json_encode($legWonMatchState)]
+            );
+        }
+    }
+
+    private function executeApiCall(string $action, string $method, array $data): void
+    {
+        $testData = ['action' => $action, 'method' => $method, 'data' => $data];
+        $postData = $data;
+
+        // If a specific match state isn't provided in the data, use the class's current state.
+        if (!isset($postData['matchState']) && $this->currentMatchState) {
+            $postData['matchState'] = json_encode($this->currentMatchState);
+        }
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->baseUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: ' . $action, 'Authorization: Bearer ' . $this->jwtToken]);
+        curl_setopt($ch, CURLOPT_POST, ($method === 'POST'));
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        }
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+
+        $responseBody = mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8');
+        $responseJson = json_decode($responseBody, true);
+
+        // Update the class's match state for the next chained request
+        if (isset($responseJson['success']) && $responseJson['success'] && isset($responseJson['match'])) {
+            $this->currentMatchState = $responseJson['match'];
+        }
+
+        $this->results[] = [
+            'test' => $testData,
+            'status_code' => $statusCode,
+            'players_before' => 'N/A', // Simplified for this refactor
+            'players_after' => 'N/A',
+            'response_body' => $responseBody,
+            'post_data_sent' => $postData,
+            'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8'),
+        ];
+    }
+}
+
 /**
  * Runs integration tests against the live API endpoints.
  * @return array The results of the API tests.
@@ -203,223 +350,8 @@ function run_api_tests(): array
         ]];
     }
 
-    $playersDataFile = __DIR__ . '/../data/players.json';
-
-    // Updated API tests for the stateless architecture
-    $apiTests = [
-        ['action' => 'player:persist', 'method' => 'POST', 'data' => ['playerName' => 'Test Player A']],
-        ['action' => 'player:persist', 'method' => 'POST', 'data' => ['playerName' => 'Test Player B']],
-        [
-            'action' => 'game:start', 
-            'method' => 'POST', 
-            'data' => [
-                'players' => json_encode(['Test Player A', 'Test Player B']), 
-                'gameType' => '301'
-            ]
-        ],
-        // The game:score test now requires the full match state, which is handled dynamically below.
-    ];
-
-    $apiResults = [];
-
-    // This will hold the latest game state as we move through the tests.
-    $currentMatchState = null;
-
-    foreach ($apiTests as $test) {
-        $testResult = ['test' => $test];
-        $testResult['players_before'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
-        $url = $baseUrl;
-        // Move action to a header to avoid mod_security filters.
-        $actionHeader = 'X-Action: ' . $test['action'];
-        $authHeader = 'Authorization: Bearer ' . $jwtToken;
-
-        // POST data no longer needs a CSRF token.
-        $postData = $test['data'];
-
-        // If we have a match state, add it to the request.
-        if ($currentMatchState !== null) {
-            $postData['matchState'] = json_encode($currentMatchState);
-        }
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1); // We want to capture response headers for debugging
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [$actionHeader, $authHeader]);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        $testResult['test'] = $test; // Re-assign the modified test array to the result
-
-        $rawResponse = curl_exec($ch);
-        // CRITICAL: Get cURL info BEFORE closing the handle to prevent fatal errors.
-        $testResult['status_code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $testResult['curl_error_num'] = curl_errno($ch);
-        $testResult['curl_error_msg'] = curl_error($ch);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch); // Close the handle now that we have the info.
-
-        $responseHeaders = substr($rawResponse, 0, $headerSize);
-        $rawBody = substr($rawResponse, $headerSize);
-        // Sanitize the response body to ensure it's valid UTF-8, preventing json_encode errors.
-        $responseBody = mb_convert_encoding($rawBody, 'UTF-8', 'UTF-8');
-
-        $testResult['request_url'] = $url;
-        $testResult['post_data_sent'] = $postData;
-        $testResult['response_headers'] = $responseHeaders;
-        $testResult['response_body'] = $responseBody;
-
-        // IMPORTANT: Update the current match state for the next iteration.
-        $responseJson = json_decode($responseBody, true);
-        if (isset($responseJson['success']) && $responseJson['success'] && isset($responseJson['match'])) {
-            $currentMatchState = $responseJson['match'];
-        }
-
-        $testResult['players_after'] = file_exists($playersDataFile) ? file_get_contents($playersDataFile) : 'File not found.';
-        $apiResults[] = $testResult;
-    }
-
-    // Dynamically add a 'game:score' test if the 'game:start' was successful
-    if ($currentMatchState) {
-        $scoreTest = [
-            'action' => 'game:score',
-            'method' => 'POST',
-            'data' => [
-                'darts' => json_encode([60, 20, 5]), // Simulate a turn of T20, 20, 5 (total 85)
-                'matchState' => json_encode($currentMatchState) // Pass the state from the previous 'game:start' call
-            ]
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $baseUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: ' . $scoreTest['action'], 'Authorization: Bearer ' . $jwtToken]);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
-
-        $rawResponse = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-        
-        $apiResults[] = [
-            'test' => $scoreTest,
-            'status_code' => $statusCode,
-            'players_before' => 'See previous test step.', // Data is chained
-            'players_after' => 'N/A for score test.',
-            'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'),
-            'post_data_sent' => $scoreTest['data'],
-            'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8'),
-        ];
-    }
-
-    // Dynamically add a 'game:score' test for a VALID checkout
-    if ($currentMatchState) {
-        // Manually set a player's score to a checkout number for this test
-        $validCheckoutState = $currentMatchState;
-        $validCheckoutState['players'][0]['score'] = 40;
-
-        $scoreTest = [
-            'action' => 'game:score (Valid Checkout)',
-            'method' => 'POST',
-            'data' => [
-                'darts' => json_encode([['score' => 40, 'multiplier' => 2, 'base' => 20]]), // D20 to win
-                'matchState' => json_encode($validCheckoutState)
-            ]
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $baseUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: game:score', 'Authorization: Bearer ' . $jwtToken]);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
-
-        $rawResponse = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-        
-        $apiResults[] = [
-            'test' => $scoreTest,
-            'status_code' => $statusCode,
-            'players_before' => 'N/A',
-            'players_after' => 'N/A',
-            'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'),
-            'post_data_sent' => $scoreTest['data'],
-            'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8'),
-        ];
-    }
-
-    // Dynamically add a 'game:score' test for an INVALID checkout (should bust)
-    if ($currentMatchState) {
-        // Manually set a player's score to a checkout number for this test
-        $invalidCheckoutState = $currentMatchState;
-        $invalidCheckoutState['players'][0]['score'] = 20;
-
-        $scoreTest = [
-            'action' => 'game:score (Invalid Checkout)',
-            'method' => 'POST',
-            'data' => [
-                'darts' => json_encode([['score' => 20, 'multiplier' => 1, 'base' => 20]]), // Single 20 to finish (invalid)
-                'matchState' => json_encode($invalidCheckoutState)
-            ]
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $baseUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: game:score', 'Authorization: Bearer ' . $jwtToken]);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
-
-        $rawResponse = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-        
-        $apiResults[] = ['test' => $scoreTest, 'status_code' => $statusCode, 'players_before' => 'N/A', 'players_after' => 'N/A', 'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'), 'post_data_sent' => $scoreTest['data'], 'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8')];
-    }
-
-    // Dynamically add a 'game:nextLeg' test if a leg was just won.
-    // We need to find the response from the valid checkout test.
-    $legWonMatchState = null;
-    foreach ($apiResults as $result) {
-        if (($result['test']['action'] ?? '') === 'game:score (Valid Checkout)') {
-            $body = json_decode($result['response_body'], true);
-            if ($body['success'] && isset($body['match'])) {
-                $legWonMatchState = $body['match'];
-                break;
-            }
-        }
-    }
-
-    if ($legWonMatchState && !($legWonMatchState['isOver'] ?? false)) {
-        $nextLegTest = [
-            'action' => 'game:nextLeg',
-            'method' => 'POST',
-            'data' => ['matchState' => json_encode($legWonMatchState)]
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $baseUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HEADER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: ' . $nextLegTest['action'], 'Authorization: Bearer ' . $jwtToken]);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($nextLegTest['data']));
-
-        $rawResponse = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-
-        $apiResults[] = ['test' => $nextLegTest, 'status_code' => $statusCode, 'players_before' => 'N/A', 'players_after' => 'N/A', 'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'), 'post_data_sent' => $nextLegTest['data'], 'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8')];
-    }
-
-    return $apiResults;
+    $apiTestRunner = new ApiTestRunner($baseUrl, $jwtToken);
+    return $apiTestRunner->run();
 }
 
 /**
@@ -491,7 +423,7 @@ function run_diagnostics(): array
     ];
 }
 
-$reportData = run_diagnostics();
+$reportData = (new Testbed($logger))->run();
 
 ?>
 <!DOCTYPE html>
