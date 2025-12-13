@@ -303,6 +303,76 @@ function run_diagnostics() {
         ];
     }
 
+    // Dynamically add a 'game:score' test for a VALID checkout
+    if ($currentMatchState) {
+        // Manually set a player's score to a checkout number for this test
+        $validCheckoutState = $currentMatchState;
+        $validCheckoutState['players'][0]['score'] = 40;
+
+        $scoreTest = [
+            'action' => 'game:score (Valid Checkout)',
+            'method' => 'POST',
+            'data' => [
+                'darts' => json_encode([['score' => 40, 'multiplier' => 2, 'base' => 20]]), // D20 to win
+                'matchState' => json_encode($validCheckoutState)
+            ]
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $baseUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: game:score', 'Authorization: Bearer ' . $jwtToken]);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+        
+        $apiResults[] = [
+            'test' => $scoreTest,
+            'status_code' => $statusCode,
+            'players_before' => 'N/A',
+            'players_after' => 'N/A',
+            'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'),
+            'post_data_sent' => $scoreTest['data'],
+            'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8'),
+        ];
+    }
+
+    // Dynamically add a 'game:score' test for an INVALID checkout (should bust)
+    if ($currentMatchState) {
+        // Manually set a player's score to a checkout number for this test
+        $invalidCheckoutState = $currentMatchState;
+        $invalidCheckoutState['players'][0]['score'] = 20;
+
+        $scoreTest = [
+            'action' => 'game:score (Invalid Checkout)',
+            'method' => 'POST',
+            'data' => [
+                'darts' => json_encode([['score' => 20, 'multiplier' => 1, 'base' => 20]]), // Single 20 to finish (invalid)
+                'matchState' => json_encode($invalidCheckoutState)
+            ]
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $baseUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Action: game:score', 'Authorization: Bearer ' . $jwtToken]);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($scoreTest['data']));
+
+        $rawResponse = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+        
+        $apiResults[] = ['test' => $scoreTest, 'status_code' => $statusCode, 'players_before' => 'N/A', 'players_after' => 'N/A', 'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'), 'post_data_sent' => $scoreTest['data'], 'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8')];
+    }
+
     $report['api'] = $apiResults;
 
     // --- Test 3: PHP Error Logging ---
