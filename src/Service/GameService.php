@@ -20,40 +20,49 @@ class GameService
     /**
      * Applies a player's score to the match state.
      *
-     * @param array $match The current match state.
-     * @param int $score The score to be submitted.
-     * @param bool $isBust Whether the frontend determined this is a bust.
-     * @param bool $isCheckout Whether the frontend determined this is a checkout.
+     * @param array $match The current match state
+     * @param array $dartScores An array of scores for the darts thrown in the turn (e.g., [60, 20, 5]).
      * @return array The updated match state.
      */
-    public function applyScore(array $match, int $score, bool $isBust, bool $isCheckout): array
+    public function applyScore(array $match, array $dartScores): array
     {
-        $this->logger->info('Applying score', ['score' => $score, 'isBust' => $isBust, 'isCheckout' => $isCheckout]);
+        $this->logger->info('Applying turn score', ['darts' => $dartScores]);
 
         $playerIndex = $match['currentPlayerIndex'];
         $player = &$match['players'][$playerIndex]; // Use reference to modify directly
+        $scoreAtStartOfTurn = $player['score'];
+        $turnTotal = 0;
+        $isBust = false;
 
-        // Record the state before the throw for history/undo purposes
-        $turnState = [
-            'playerIndex' => $playerIndex,
-            'previousScore' => $player['score'],
-            'scoreThrown' => $score,
-            'isBust' => $isBust,
-        ];
-        $match['history'][] = $turnState;
+        foreach ($dartScores as $dartScore) {
+            $player['score'] -= $dartScore;
+            $turnTotal += $dartScore;
+            // Check for bust condition after each dart
+            if ($player['score'] < 2) {
+                $isBust = true;
+                break; // Turn is over
+            }
+        }
 
         if ($isBust) {
-            // On a bust, the score does not change.
-            $player['dartsThrown'] += 3; // Assume 3 darts for a bust turn
+            $this->logger->info('Player busted.', ['player' => $player['name'], 'score_reverted_to' => $scoreAtStartOfTurn]);
+            $player['score'] = $scoreAtStartOfTurn; // Revert score
+            // Add the score from the start of the turn to their history to show no change
+            $player['scores'][] = $scoreAtStartOfTurn;
         } else {
-            $player['score'] -= $score;
-            $player['dartsThrown'] += 3; // Assume 3 darts per turn for now
+            // Add the new score to the player's personal score history
+            $player['scores'][] = $player['score'];
 
-            if ($isCheckout && $player['score'] === 0) {
+            // Check for a valid checkout
+            if ($player['score'] === 0) {
                 $this->logger->info('Player has checked out, processing leg win.');
                 return $this->processLegWin($match, $playerIndex);
             }
         }
+
+        // Record the turn in the main match history
+        $match['history'][] = ['playerIndex' => $playerIndex, 'scoreThrown' => $turnTotal, 'isBust' => $isBust];
+        $player['dartsThrown'] += count($dartScores);
 
         // Advance to the next player
         $match['currentPlayerIndex'] = ($playerIndex + 1) % count($match['players']);

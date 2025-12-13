@@ -44,11 +44,13 @@ class GameController
             return;
         }
 
-        $score = (int)($_POST['score'] ?? 0);
-        $isBust = filter_var($_POST['isBust'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $isCheckout = filter_var($_POST['isCheckout'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $darts = json_decode($_POST['darts'] ?? '[]', true);
+        if (empty($darts) || !is_array($darts)) {
+            $this->jsonResponse(['success' => false, 'message' => 'Invalid darts array provided.']);
+            return;
+        }
 
-        $newMatchState = $this->gameService->applyScore($matchState, $score, $isBust, $isCheckout);
+        $newMatchState = $this->gameService->applyScore($matchState, $darts);
 
         $this->jsonResponse(['success' => true, 'match' => $newMatchState]);
     }

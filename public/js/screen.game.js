@@ -3,6 +3,7 @@ window.DartsApp = window.DartsApp || {};
 window.DartsApp.initGameScreen = function(match) {
     const { postAction, playSound, showScreen, showMatchSummary, getCheckoutGuide } = window.DartsApp;
     let previousMatchState = null;
+    let currentTurnScores = [];
     let currentThrow = { base: null, multiplier: 1 };
 
     const gameScreen = document.getElementById('gameScreen');
@@ -12,6 +13,7 @@ window.DartsApp.initGameScreen = function(match) {
     const inputDisplay = document.getElementById('inputDisplay');
     const undoBtn = document.getElementById('undoBtn');
     const nextLegBtn = document.getElementById('nextLegBtn');
+    const submitTurnBtn = document.getElementById('submitTurnBtn');
 
     function drawBurnDownChart(matchState = null) {
         console.log('[drawBurnDownChart] Drawing chart with state:', matchState);
@@ -19,25 +21,19 @@ window.DartsApp.initGameScreen = function(match) {
         if (!container || !google.visualization || !matchState) return;
 
         try {
-            const history = matchState.history;
             const players = matchState.players;
-
             const dataTable = new google.visualization.DataTable();
             dataTable.addColumn('number', 'Turn');
             players.forEach(p => dataTable.addColumn('number', p.name));
 
-            const initialRow = [0, ...players.map(() => matchState.gameType)];
-            dataTable.addRow(initialRow);
+            // Find the maximum number of turns any player has taken
+            const maxTurns = Math.max(...players.map(p => p.scores.length));
 
-            const turnScores = players.map(() => matchState.gameType);
-            let turnCount = 0;
-            history.forEach((turnState) => {
-                turnCount++;
-                turnScores[turnState.playerIndex] = turnState.previousScore;
-                if ((turnCount - 1) % players.length === players.length - 1 || turnCount === history.length) {
-                    dataTable.addRow([Math.ceil(turnCount / players.length), ...turnScores.slice()]);
-                }
-            });
+            for (let i = 0; i < maxTurns; i++) {
+                const row = [i + 1];
+                players.forEach(p => row.push(p.scores[i] ?? null)); // Use null for players with fewer turns
+                dataTable.addRow(row);
+            }
 
             const options = {
                 title: 'Score Burn-Down',
@@ -103,6 +99,15 @@ window.DartsApp.initGameScreen = function(match) {
         document.getElementById('activeAvg').innerText = `Avg: ${legAvg}`;
 
         try {
+            const scoreHistoryContainer = document.getElementById('activeScoreHistory');
+            scoreHistoryContainer.innerHTML = ''; // Clear previous history
+            if (player.scores && player.scores.length > 0) {
+                player.scores.forEach(score => {
+                    const scoreEl = document.createElement('span');
+                    scoreEl.textContent = score;
+                    scoreHistoryContainer.appendChild(scoreEl);
+                });
+            }
             if (match.checkoutAssistant) {
                 document.getElementById('checkoutHint').innerText = getCheckoutGuide(player.score);
             } else {
@@ -113,13 +118,18 @@ window.DartsApp.initGameScreen = function(match) {
             document.getElementById('checkoutHint').innerText = "";
         }
 
-        document.getElementById('dartsThrownDisplay').innerHTML = '';
+        // Update the display of darts thrown in the current turn
+        const dartsDisplay = document.getElementById('dartsThrownDisplay');
+        dartsDisplay.innerText = currentTurnScores.length > 0 ? `Darts: ${currentTurnScores.join(', ')}` : '';
 
         try {
             const leaderboardElement = document.getElementById('leaderboard');
             leaderboardElement.innerHTML = match.players.map((p, index) => {
                 const pTotalPoints = (match.gameType - p.score);
                 const pLegAvg = p.dartsThrown > 0 ? (pTotalPoints / p.dartsThrown * 3).toFixed(2) : '0.00';
+                // Get the last 5 scores for the mini-history
+                const scoreHistory = p.scores ? p.scores.slice(-5).join(' → ') : '';
+
                 return `
                     <div class="player-card ${index === match.currentPlayerIndex ? 'player-card--active' : ''}">
                         <span class="player-card__name">${p.name}</span>
@@ -152,6 +162,39 @@ window.DartsApp.initGameScreen = function(match) {
         inputDisplay.innerText = score;
     }
 
+    async function submitTurn() {
+        if (currentTurnScores.length === 0) return; // Don't submit an empty turn
+
+        const res = await postAction('game:score', {
+            darts: JSON.stringify(currentTurnScores),
+            matchState: JSON.stringify(previousMatchState)
+        });
+
+        // Reset turn state regardless of success/failure
+        currentTurnScores = [];
+        currentThrow = { base: null, multiplier: 1 };
+        updateMultiplierButtons();
+        updateInputDisplay();
+
+        if (res.success) {
+            const newMatchState = res.match;
+            const currentPlayerIndex = previousMatchState.currentPlayerIndex;
+            const newPlayerState = newMatchState.players[currentPlayerIndex];
+            const oldPlayerState = previousMatchState.players.find(p => p.name === newPlayerState.name);
+
+            if (newMatchState.isOver) {
+                playSound('winSound');
+                showMatchSummary(newMatchState);
+            } else if (newPlayerState && oldPlayerState && newPlayerState.legsWon > oldPlayerState.legsWon) {
+                playSound('winSound');
+                showWinModal(newPlayerState, newMatchState);
+            } else {
+                playSound('dartHitSound');
+                updateGameUI(newMatchState);
+            }
+        }
+    }
+
     if (!gameScreen.dataset.initialized) {
         console.log('[initGameScreen] Attaching event listeners for the first time.');
 
@@ -180,50 +223,34 @@ window.DartsApp.initGameScreen = function(match) {
             updateInputDisplay();
         });
 
-        keypad.addEventListener('click', async (e) => {
+        keypad.addEventListener('click', (e) => {
             if (!e.target.matches('.key[data-score]')) return;
+            if (currentTurnScores.length >= 3) return; // Max 3 darts per turn
+
             const baseScore = parseInt(e.target.dataset.score, 10);
-            const isBull = baseScore === 50;
-            const remainingScore = previousMatchState.players[previousMatchState.currentPlayerIndex].score;
             currentThrow.base = baseScore;
             const score = currentThrow.base * currentThrow.multiplier;
 
-            const isBust = (remainingScore - score) < 0 || (remainingScore - score) === 1;
-            const isCheckout = (remainingScore - score) === 0 && (currentThrow.multiplier === 2 || isBull);
+            currentTurnScores.push(score);
+            playSound('dartHitSound');
 
-            const res = await postAction('game:score', { score, isBust, isCheckout, matchState: JSON.stringify(previousMatchState) });
-
-            if (res.success) {
-                const newMatchState = res.match;
-                const currentPlayerIndex = previousMatchState.currentPlayerIndex;
-                const newPlayerState = newMatchState.players[currentPlayerIndex];
-                const oldPlayerState = previousMatchState.players.find(p => p.name === newPlayerState.name);
-
-                if (newMatchState.isOver) {
-                    playSound('winSound');
-                    showMatchSummary(newMatchState);
-                    return;
-                }
-
-                if (newPlayerState && oldPlayerState && newPlayerState.legsWon > oldPlayerState.legsWon) {
-                    playSound('winSound');
-                    showWinModal(newPlayerState, newMatchState);
-                } else {
-                    playSound('dartHitSound');
-                    updateGameUI(newMatchState);
-                }
-            } else {
-                alert(`Error: ${res.message || 'Could not submit score.'}`);
-            }
+            // Reset for next dart entry
             currentThrow = { base: null, multiplier: 1 };
             updateMultiplierButtons();
             updateInputDisplay();
+            updateGameUI(previousMatchState); // Re-render to show darts thrown
+
+            if (currentTurnScores.length === 3) {
+                setTimeout(() => submitTurn(), 200); // Short delay to show the 3rd dart
+            }
         });
 
-        undoBtn.addEventListener('click', async () => {
-            const res = await postAction('game:undo', { matchState: JSON.stringify(previousMatchState) });
-            if (res.success) {
-                updateGameUI(res.match);
+        submitTurnBtn.addEventListener('click', submitTurn);
+
+        undoBtn.addEventListener('click', () => {
+            if (currentTurnScores.length > 0) {
+                currentTurnScores.pop(); // Remove the last dart
+                updateGameUI(previousMatchState); // Re-render to update display
             }
         });
 

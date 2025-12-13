@@ -33,15 +33,16 @@
 * **High Contrast Visibility:** We utilized high-contrast colors (Green for Go/Current Player, Red for Stop/Waiting) so the score is readable from the oche (the throw line), which is 7ft 9.25in away.
 
 ### Game Logic Implementation
-* **"Bust" Mechanics:** The client-side JavaScript determines if a throw is a "Bust" (e.g., score goes below zero or to exactly one). It then sends a flag (`isBust`) to the backend, which records the bust and advances the turn without changing the score.
-* **Double-Out Requirement:** The client validates that a checkout is valid (ends on a double to reach zero) and sends an `isCheckout` flag to the backend. The backend trusts this flag to process a leg win.
+* **Authoritative Backend Logic:** All game rules are now enforced by the backend `GameService`. The client sends an array of individual dart scores for a turn, and the backend authoritatively calculates the result.
+* **"Bust" Mechanics:** The `GameService` processes each dart in a turn sequentially. If a dart causes the score to go below 2 (i.e., to 1, or below 0), the turn is immediately a "bust," and the player's score reverts to what it was at the start of that turn.
+* **Checkout Validation:** The `GameService` validates checkouts. A leg is only won if a player's score reaches exactly zero. This logic is now handled entirely on the backend to ensure rule consistency.
 
 ### State Management
 * **Stateless API:** The application uses a stateless API model. The entire game state is held by the client (in JavaScript). When an action occurs (like a score being entered), the client sends the *entire* game state object to the PHP backend. The backend processes the action, calculates the *new* game state, and returns it in the API response. The client then replaces its old state with the new one. This eliminates the need for server-side sessions for gameplay and ensures the client is always the single source of truth.
 
 ---
 
-## 🛠 Technical Implementation
+## 🛠 Technical Implementation Details
 
 ### Tech Stack
 *   **Backend:** PHP 8+ for API logic, session management, and data persistence.

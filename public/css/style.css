@@ -328,12 +328,36 @@ h1 {
     border-color: #8c4b50;
 }
 
+.key-submit {
+    background-color: #285a43; /* A subtle green tone */
+    border-color: #3c8c6a;
+}
+
 .chart-container {
     grid-area: chart;
     background-color: var(--card-bg);
     padding: 10px;
     border-radius: 8px;
     min-height: 300px;
+}
+
+.player-card__score-history {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-height: 100px; /* Limit height */
+    overflow-y: auto; /* Allow scrolling for long legs */
+    margin-top: 10px;
+    font-size: 1em;
+    color: var(--text-color-secondary);
+}
+
+.player-card__score-history span {
+    line-height: 1.4;
+}
+
+.player-card__score-history span:last-child {
+    font-weight: bold;
 }
 
 /* Accessibility helper class for visually-hidden labels */

@@ -80,15 +80,16 @@ function run_diagnostics() {
 
     // Test 2: GameService Bust Logic
     $gameService = new GameService($logger);
-    $initialMatch = [
+    $bustTestMatch = [
         'currentPlayerIndex' => 0,
-        'players' => [['name' => 'Player 1', 'score' => 50, 'dartsThrown' => 0, 'legsWon' => 0]],
+        'players' => [['name' => 'Player 1', 'score' => 50, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => [501, 50]]],
         'history' => [],
         'gameType' => 501,
         'matchLegs' => 3,
         'currentLeg' => 1,
     ];
-    $updatedMatch = $gameService->applyScore($initialMatch, 60, true, false); // Score 60 on 50 is a bust
+    // A single dart of 60 on a score of 50 is a bust.
+    $updatedMatch = $gameService->applyScore($bustTestMatch, [60]);
 
     // A bust means the score should NOT change.
     if (isset($updatedMatch['players'][0]['score']) && $updatedMatch['players'][0]['score'] === 50) {
@@ -96,6 +97,26 @@ function run_diagnostics() {
     } else {
         $finalScore = $updatedMatch['players'][0]['score'] ?? 'N/A';
         $serviceResults[] = ['FAIL', "GameService Bust Logic Test: Player score changed to {$finalScore} after a bust, but should have remained 50."];
+    }
+
+    // Test 3: GameService Turn-Based Scoring
+    $turnTestMatch = [
+        'currentPlayerIndex' => 0,
+        'players' => [['name' => 'Player 1', 'score' => 501, 'dartsThrown' => 0, 'legsWon' => 0, 'scores' => [501]]],
+        'history' => [],
+        'gameType' => 501,
+        'matchLegs' => 3,
+        'currentLeg' => 1,
+    ];
+    // Simulate a turn of T20, 20, 5 (total 85)
+    $updatedTurnMatch = $gameService->applyScore($turnTestMatch, [60, 20, 5]);
+    $expectedScore = 501 - 85; // 416
+
+    if (isset($updatedTurnMatch['players'][0]['score']) && $updatedTurnMatch['players'][0]['score'] === $expectedScore) {
+        $serviceResults[] = ['PASS', 'GameService Turn-Based Scoring Test: Player score correctly updated after a valid turn (501 - 85 = 416).'];
+    } else {
+        $finalScore = $updatedTurnMatch['players'][0]['score'] ?? 'N/A';
+        $serviceResults[] = ['FAIL', "GameService Turn-Based Scoring Test: Player score was {$finalScore}, but should have been {$expectedScore}."];
     }
 
     $report['service_tests'] = $serviceResults;
@@ -216,10 +237,8 @@ function run_diagnostics() {
             'action' => 'game:score',
             'method' => 'POST',
             'data' => [
-                'score' => 100,
-                'isBust' => 'false',
-                'isCheckout' => 'false',
-                'matchState' => json_encode($currentMatchState)
+                'darts' => json_encode([60, 20, 5]), // Simulate a turn of T20, 20, 5 (total 85)
+                'matchState' => json_encode($currentMatchState) // Pass the state from the previous 'game:start' call
             ]
         ];
 
@@ -239,8 +258,11 @@ function run_diagnostics() {
         $apiResults[] = [
             'test' => $scoreTest,
             'status_code' => $statusCode,
+            'players_before' => 'See previous test step.', // Data is chained
+            'players_after' => 'N/A for score test.',
             'response_body' => mb_convert_encoding(substr($rawResponse, $headerSize), 'UTF-8', 'UTF-8'),
-            // Other keys are omitted as this is a simplified, dynamic test.
+            'post_data_sent' => $scoreTest['data'],
+            'response_headers' => mb_convert_encoding(substr($rawResponse, 0, $headerSize), 'UTF-8', 'UTF-8'),
         ];
     }
 

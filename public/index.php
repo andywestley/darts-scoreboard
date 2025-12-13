@@ -142,11 +142,12 @@ if ($action) {
         <div class="player-display">
             <div class="player-name-large" id="activeName"></div>
             <div class="current-score-large" id="activeScore"></div>
+            <div class="player-card__score-history" id="activeScoreHistory">
+                <!-- Player's running score history will be rendered here -->
+            </div>
             <div class="stats-badge" id="activeAvg"></div>
             <div class="checkout-suggestion" id="checkoutHint"></div>
         </div>
-
-        <div id="burnDownChartContainer" class="chart-container"></div>
 
         <div class="leaderboard" id="leaderboard"></div>
 
@@ -158,6 +159,7 @@ if ($action) {
                     <button class="key key-mod" id="modDouble">D</button>
                     <button class="key key-mod" id="modTreble">T</button>
                     <button class="key key-special" data-score="0">MISS</button>
+                    <button class="key key-special key-submit" id="submitTurnBtn">SUBMIT</button>
                     <button class="key key-special key-del" id="undoBtn">UNDO</button>
                 </div>
                 <div class="numbers" id="keypadNumbers">
@@ -169,6 +171,8 @@ if ($action) {
                 </div>
             </div>
         </div>
+
+        <div id="burnDownChartContainer" class="chart-container"></div>
     </div>
 
     <!-- Stats Screen -->

@@ -44,6 +44,11 @@ class Logger
         $this->log(self::INFO, $message, $context);
     }
 
+    public function debug(string $message, array $context = []): void
+    {
+        $this->log(self::DEBUG, $message, $context);
+    }
+
     public function log(string $level, string $message, array $context = []): void
     {
         if ($this->logLevelOrder[$level] < $this->logLevelOrder[$this->logLevel]) {
