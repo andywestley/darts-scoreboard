@@ -65,6 +65,7 @@ require_once ROOT_PATH . '/src/lib/php-jwt/Key.php';
 // 3. Manually include all class files.
 // This ensures that all classes are available for both web pages and API endpoints.
 require_once ROOT_PATH . '/src/Data/Storage.php'; // Dependency
+require_once ROOT_PATH . '/src/Service/GameService.php'; // Dependency for GameController
 require_once ROOT_PATH . '/src/Controller/SetupController.php'; // Dependency
 require_once ROOT_PATH . '/src/Controller/GameController.php'; // Dependency
 require_once ROOT_PATH . '/src/Controller/StatsController.php'; // Dependency
